@@ -1,150 +1,219 @@
-/* ========================================================== */
-/* TRANG QUẢN TRỊ ADMIN: HIỆU ỨNG 3D SỐNG ĐỘNG & NỀN BAY BỔNG */
-/* ========================================================== */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* CSS/dashboard/CSS */
+body { 
+    font-family: Arial, sans-serif; 
+    background: #f4f6f9; 
+    margin: 0; 
+    padding: 20px; 
 }
 
-body {
-    display: flex;
-    min-height: 100vh;
-    /* Hiệu ứng nền chuyển sắc bay bổng, uyển chuyển động liên tục */
-    background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #4a0e17);
-    background-size: 400% 400%;
-    animation: adminBgFlow 15s ease infinite;
-    color: #e0e0e0;
+.container { 
+    max-width: 1100px; 
+    margin: 0 auto; 
+    background: #fff; 
+    padding: 25px; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
 }
 
-@keyframes adminBgFlow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+.header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-bottom: 2px solid #eee; 
+    padding-bottom: 15px; 
+    margin-bottom: 20px; 
+    flex-wrap: wrap; 
+    gap: 10px; 
 }
 
-/* ========================================================== */
-/* 1. THANH MENU BÊN TRÁI (SIDEBAR 3D KÍNH MỜ) */
-/* ========================================================== */
-.sidebar, .admin-sidebar, aside {
-    width: 280px;
-    background: rgba(20, 20, 35, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-    padding: 25px 20px;
+.header h2 { 
+    color: #333; 
+    margin: 0; 
+}
+
+.header-nav { 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+}
+
+/* Style chuông thông báo admin */
+.notification-bell {
     position: relative;
-    z-index: 10;
-}
-
-/* Tiêu đề Quản lý sự kiện trên Sidebar */
-.sidebar h2, .sidebar-title, .admin-sidebar h3 {
-    color: #ffffff;
-    font-size: 1.2rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid rgba(255, 0, 85, 0.4);
-    text-shadow: 0 2px 10px rgba(255, 0, 85, 0.5);
-}
-
-/* Các liên kết / mục menu trong sidebar */
-.sidebar a, .admin-sidebar a, .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    margin-bottom: 10px;
-    color: rgba(255, 255, 255, 0.85);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.95rem;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Hiệu ứng tương tác bay bổng khi rê chuột vào menu */
-.sidebar a:hover, .admin-sidebar a:hover, .menu-item:hover, .sidebar a.active {
-    background: linear-gradient(135deg, rgba(255, 0, 85, 0.85) 0%, rgba(0, 143, 57, 0.85) 100%);
-    color: #ffffff;
-    transform: translateX(8px) scale(1.02);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 0, 85, 0.5);
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
-/* Nút đăng xuất ở cuối sidebar */
-.sidebar a.logout-btn, .btn-logout-sidebar {
-    margin-top: auto;
-    background: linear-gradient(135deg, rgba(204, 0, 0, 0.8) 0%, rgba(100, 0, 0, 0.8) 100%);
-    border: 1px solid rgba(255, 51, 51, 0.4);
-}
-
-.sidebar a.logout-btn:hover {
-    background: linear-gradient(135deg, rgba(255, 0, 51, 0.95) 0%, rgba(153, 0, 0, 0.95) 100%);
-    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.6);
-}
-
-
-/* ========================================================== */
-/* 2. KHUNG NỘI DUNG CHÍNH (MAIN CONTENT 3D) */
-/* ========================================================== */
-.main-content, .admin-container, main {
-    flex: 1;
-    padding: 40px;
-    overflow-y: auto;
-}
-
-/* Khung chào mừng / Thẻ thông báo lớn */
-.welcome-card, .dashboard-welcome, .admin-header-box {
-    background: rgba(30, 30, 50, 0.65);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: inline-block;
+    background: #ffc107;
+    color: #000;
+    padding: 8px 14px;
     border-radius: 20px;
-    padding: 30px 40px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    margin-bottom: 30px;
-    position: relative;
-    overflow: hidden;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 14px;
+}
+.notification-bell:hover { 
+    background: #e0a800; 
 }
 
-/* Hiệu ứng ánh sáng quét qua khung chào mừng */
-.welcome-card::before {
-    content: '';
+.notification-badge {
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-    animation: cardShimmer 6s infinite;
+    top: -6px;
+    right: -6px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    padding: 3px 7px;
+    font-size: 11px;
+    font-weight: bold;
+    border: 2px solid #fff;
+    animation: pulse 1.5s infinite;
 }
 
-@keyframes cardShimmer {
-    0% { left: -100%; }
-    20% { left: 200%; }
-    100% { left: 200%; }
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
 }
 
-.welcome-card h2, .welcome-card h3 {
-    color: #ffffff;
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin-bottom: 10px;
-    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+.btn-home { 
+    background-color: #0d6efd; 
+    color: white; 
+    padding: 8px 12px; 
+    text-decoration: none; 
+    border-radius: 4px; 
+    font-weight: bold; 
+    font-size: 14px; 
+}
+.btn-home:hover { 
+    background-color: #0b5ed7; 
 }
 
-.welcome-card p {
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 1rem;
-    line-height: 1.6;
+.btn-events { 
+    background-color: #198754; 
+    color: white; 
+    padding: 8px 12px; 
+    text-decoration: none; 
+    border-radius: 4px; 
+    font-weight: bold; 
+    font-size: 14px; 
+}
+.btn-events:hover { 
+    background-color: #157347; 
+}
+
+.btn-logout { 
+    background: #dc3545; 
+    color: white; 
+    padding: 8px 12px; 
+    text-decoration: none; 
+    border-radius: 4px; 
+    font-weight: bold; 
+    font-size: 14px; 
+}
+.btn-logout:hover { 
+    background: #bb2d3b; 
+}
+
+/* Box duyệt yêu cầu */
+.approval-box { 
+    background: #fff3cd; 
+    border: 1px solid #ffeeba; 
+    padding: 20px; 
+    border-radius: 8px; 
+    margin-bottom: 25px; 
+}
+.approval-box h3 { 
+    color: #856404; 
+    margin-top: 0; 
+}
+
+/* Thống kê Grid */
+.stats-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 15px; 
+    margin-bottom: 20px; 
+}
+
+.stat-card { 
+    background: #e7f1ff; 
+    border-left: 5px solid #0d6efd; 
+    padding: 15px; 
+    border-radius: 4px; 
+}
+.stat-card h3 { 
+    margin: 0 0 5px 0; 
+    color: #0d6efd; 
+    font-size: 16px; 
+}
+.stat-card p { 
+    margin: 0; 
+    font-size: 15px; 
+    font-weight: bold; 
+    color: #333; 
+}
+
+.stat-card-staff { 
+    background: #e6f4ea; 
+    border-left: 5px solid #198754; 
+    padding: 15px; 
+    border-radius: 4px; 
+}
+.stat-card-staff h3 { 
+    margin: 0 0 5px 0; 
+    color: #198754; 
+    font-size: 16px; 
+}
+.stat-card-staff p { 
+    margin: 0; 
+    font-size: 15px; 
+    font-weight: bold; 
+    color: #333; 
+}
+
+.filter-form { 
+    margin-bottom: 20px; 
+    display: flex; 
+    gap: 10px; 
+    align-items: center; 
+}
+.filter-form select { 
+    padding: 8px 12px; 
+    border-radius: 4px; 
+    border: 1px solid #ccc; 
+    font-size: 14px; 
+}
+
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 10px; 
+}
+th, td { 
+    border: 1px solid #ddd; 
+    padding: 10px; 
+    text-align: left; 
+    font-size: 14px; 
+}
+th { 
+    background-color: #f8f9fa; 
+    color: #333; 
+}
+tr:nth-child(even) { 
+    background-color: #f9f9f9; 
+}
+
+.badge-event { 
+    background-color: #0dcaf0; 
+    color: #000; 
+    padding: 3px 8px; 
+    border-radius: 12px; 
+    font-weight: bold; 
+    font-size: 13px; 
+}
+.badge-score { 
+    background-color: #ffc107; 
+    color: #000; 
+    padding: 3px 8px; 
+    border-radius: 12px; 
+    font-weight: bold; 
+    font-size: 13px; 
 }
