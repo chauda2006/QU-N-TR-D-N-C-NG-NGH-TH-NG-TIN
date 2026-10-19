@@ -368,10 +368,9 @@ CREATE TABLE `su_kien` (
 
 INSERT INTO `su_kien` (`ma_sukien`, `ten_sukien`, `mo_ta`, `thoi_gian_bat_dau`, `thoi_gian_ket_thuc`, `ma_diadiem`, `file_name`, `file_path_key`, `file_type`, `file_size`, `upload_time`) VALUES
 (1, 'Chào tân sinh viên 2026', 'Sự kiện giao lưu đầu khóa.', '2026-10-15 08:00:00', '2026-10-15 11:30:00', 1, NULL, NULL, NULL, NULL, NULL),
-(2, 'Workshop Kỹ năng mềm', 'Hướng dẫn viết CV và phỏng vấn.', '2026-10-20 14:00:00', '2026-10-20 16:30:00', 2, NULL, NULL, NULL, NULL, NULL);
-
+(2, 'Workshop Kỹ năng mềm', 'Hướng dẫn viết CV và phỏng vấn.', '2026-10-20 14:00:00', '2026-10-20 16:30:00', 2, NULL, NULL, NULL, NULL, NULL),
+(3, 'Hội thảo ứng dụng trí tuệ nhân tạo trong học tập', 'Chia sẻ kinh nghiệm và kiến thức mới.', '2026-10-25 09:00:00', '2026-10-25 12:00:00', 1, NULL, NULL, NULL, NULL, NULL);
 -- --------------------------------------------------------
-
 --
 -- Table structure for table `users`
 --
