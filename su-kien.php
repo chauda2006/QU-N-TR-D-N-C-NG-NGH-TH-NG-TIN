@@ -333,7 +333,7 @@ require_once 'database.php';
     <div id="event-list" class="row">
         <p class="event-message">
             <i class="bi bi-arrow-repeat me-2"></i>
-            Đang tải danh sách sự kiện...
+            Đang tải danh sách sự kiện.
         </p>
     </div>
 
