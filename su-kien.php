@@ -1,7 +1,15 @@
-<?php 
-ob_start(); // Bật bộ đệm đầu ra để tránh lỗi "headers already sent" khi gọi session_start()
-require_once 'database.php'; 
+<?php
+session_start();
+// Hiển thị nút Đăng sự kiện nếu là Quản lý sự kiện hoặc Admin
+if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')): 
 ?>
+<div style="text-align: right; margin: 20px 20px 0 0;">
+    <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
+        <!-- 🌟 ĐỔI DẤU + CŨ THÀNH ICON PHÁT SÁNG CAO CẤP -->
+        <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
+    </a>
+</div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,12 +19,74 @@ require_once 'database.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/header.css">
-    <link rel="stylesheet" href="css/su-kien.css">
-    <link rel="stylesheet" href="css/model-su-kien.css">
+    <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
+        <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
 
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
 <style>
+    /* ==========================================================================
+   CSS CHO NÚT BẤM VÀ ICON DẤU CỘNG PHÁT SÁNG CAO CẤP (KHÔNG BỊ XẤU)
+   ========================================================================== */
+
+.btn-space-manager {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 10px; /* Khoảng cách cân đối giữa icon và chữ */
+    background: linear-gradient(135deg, #ff1e56, #80002a) !important; /* Nền gradient Đỏ - Hồng rực rỡ */
+    color: #ffffff !important;
+    padding: 12px 24px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    text-decoration: none !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    
+    /* Khung viền 3D màu Lục Neon */
+    border: 2px solid #00ffcc !important;
+    position: relative;
+    
+    /* Hiệu ứng bóng đổ đa tầng cho cả nút bấm (Neon Đỏ - Lục) */
+    box-shadow: 0 0 20px rgba(255, 30, 86, 0.8), 
+                0 0 10px rgba(0, 255, 204, 0.8),
+                inset 0 0 10px rgba(255, 255, 255, 0.4) !important;
+    
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1;
+}
+
+/* 🌟 PHẦN QUAN TRỌNG: CSS ĐỂ ICON PHÁT SÁNG RỰC RỠ, SẮC NÉT */
+.btn-space-manager i {
+    font-size: 18px; /* Tăng kích thước icon cho cân đối */
+    color: #c6e2ddf4 !important; /* Màu xanh lục neon sắc nét (đồng bộ với viền) */
+    
+    /* Áp dụng hào quang tỏa sáng Neon cho chính icon */
+    filter: drop-shadow(0 0 10px #00ffcc7f) drop-shadow(0 0 3px rgba(124, 132, 131, 0.61)) !important;
+    
+    display: flex; /* Đảm bảo icon được căn giữa hoàn hảo */
+    margin-top: -1px; /* Tinh chỉnh icon lên trên 1px cho thẳng hàng */
+}
+
+/* Hiệu ứng quét sáng lướt qua thân nút khi hover */
+.btn-space-manager:hover {
+    background: linear-gradient(135deg, #ff4d79, #00ffcc) !important;
+    color: #02010a !important; /* Chuyển chữ sang tối để icon nổi bật */
+    border-color: #ff1e56 !important; /* Viền chuyển sang Đỏ rực khi hover */
+    
+    /* Hiệu ứng Glow tỏa rộng hơn */
+    box-shadow: 0 0 30px rgba(0, 255, 204, 1), 
+                0 0 20px rgba(255, 30, 86, 1),
+                0 0 50px rgba(0, 255, 204, 0.6) !important;
+                
+    transform: translateY(-3px) scale(1.02) !important; /* Nổi khối nhẹ */
+}
+
+/* Khi hover, làm cho icon phát sáng mạnh hơn nữa với sắc đỏ neon */
+.btn-space-manager:hover i {
+    color: #02010a !important; /* Chuyển màu icon sang tối */
+    filter: drop-shadow(0 0 12px rgba(255, 30, 86, 0.9)) !important; /* Hào quang Đỏ */
+}
    /* Video background cố định, bao phủ toàn màn hình và nằm dưới cùng */
 .video-background {
   position: fixed;

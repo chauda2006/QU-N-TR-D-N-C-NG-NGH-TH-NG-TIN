@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($tai_khoan) && !empty($mat_khau)) {
         try {
+            // Đã đổi thành bảng 'users'
             $stmt = $conn->prepare("SELECT * FROM users WHERE ma_sv = ? OR email = ?");
             $stmt->execute([$tai_khoan, $tai_khoan]);
             $user = $stmt->fetch();
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['ma_sv'] = $user['ma_sv'];
                     $_SESSION['ho_ten'] = $user['ho_ten'];
-                    $_SESSION['vai_tro'] = $user['vai_tro']; // Lưu vai trò vào Session
+                    $_SESSION['vai_tro'] = $user['vai_tro']; 
 
                     if ($user['vai_tro'] === 'admin') {
                         header("Location: ../admin/dashboard.php");
@@ -68,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
         <form method="POST">
             <div class="form-group">
-                <label>Mã SV / Tài khoản</label>
-                <input type="text" name="tai_khoan" required placeholder="Nhập NV001 hoặc mã SV...">
+                <label>Mã SV / Tài khoản / Email</label>
+                <input type="text" name="tai_khoan" required placeholder="Nhập mã SV hoặc email...">
             </div>
             <div class="form-group">
                 <label>Mật khẩu</label>
