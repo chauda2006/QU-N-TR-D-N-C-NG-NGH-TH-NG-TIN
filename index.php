@@ -14,13 +14,19 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Quản Lý Sự Kiện Sinh Viên</title>
     
-    <!-- Mở file index.php và thay thế phần nhúng CSS cũ bằng 2 dòng này -->
+    <!-- Nhúng 2 file CSS của bạn -->
     <link rel="stylesheet" type="text/css" href="./css/header.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" type="text/css" href="./css/index.css?v=<?php echo time(); ?>">
 </head>
 <body>
 
-    <!-- 1. Nhúng file Header chứa Logo, Menu Phân Quyền và Khối Tài Khoản -->
+    <!-- 1. Chèn Video Background (tự động chạy lặp lại, tắt tiếng để trình duyệt cho phép tự phát) -->
+    <video autoplay loop muted playsinline preload="auto" class="video-background">
+        <source src="videos/video02.mp4" type="video/mp4">
+        Trình duyệt của bạn không hỗ trợ video background.
+    </video>
+
+    <!-- 2. Nhúng file Header chứa Logo, Menu Phân Quyền và Khối Tài Khoản -->
     <?php include 'header.php'; ?>
 
     <!-- Banner Trang chủ (Hero Banner) -->
@@ -53,6 +59,30 @@ if (session_status() === PHP_SESSION_NONE) {
                 <div class="stat-card">
                     <h3>+10 ĐRL</h3>
                     <p>Điểm rèn luyện trung bình</p>
+                </div>
+            </div>
+
+            <!-- 2.5. Phần Giới thiệu trang web sự kiện sinh viên -->
+            <div class="about-section">
+                <div class="about-card">
+                    <h3>Về Hệ Thống Sự Kiện Sinh Viên</h3>
+                    <p>
+                        Đây là trang web sự kiện sinh viên – nền tảng công nghệ tiên tiến được xây dựng nhằm kết nối sinh viên với các hoạt động ngoại khóa, 
+                        hội thảo chuyên đề công nghệ và các sự kiện lớn của nhà trường. Với sự hỗ trợ của công nghệ 
+                        <strong>Cloud Computing</strong>, hệ thống mang đến giải pháp quản lý minh bạch, giúp sinh viên 
+                        dễ dàng cập nhật thông tin, đăng ký tham gia và tự động tích lũy điểm rèn luyện (ĐRL) một cách nhanh chóng nhất.
+                    </p>
+                    <div class="about-features">
+                        <div class="feature-item">
+                            <span>🚀</span> Cập nhật sự kiện 24/7
+                        </div>
+                        <div class="feature-item">
+                            <span>📱</span> Điểm danh bằng mã QR thông minh
+                        </div>
+                        <div class="feature-item">
+                            <span>⭐</span> Tích hợp điểm rèn luyện minh bạch
+                        </div>
+                    </div>
                 </div>
             </div>
             
