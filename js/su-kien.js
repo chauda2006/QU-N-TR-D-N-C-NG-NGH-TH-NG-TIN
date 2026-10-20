@@ -113,6 +113,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (normalizedTitle.includes('chào tân sinh viên')) imagePath = 'images/sukien1.jpg';
                 else if (normalizedTitle.includes('workshop')) imagePath = 'images/sukien2.jpg';
                 else if (normalizedTitle.includes('hội thảo')) imagePath = 'images/sukien3.jpg';
+                else if (normalizedTitle.includes('hội thao')) imagePath = 'images/sukien4.jpg';
+                else if (normalizedTitle.includes('giao lưu')) imagePath = 'images/sukien5.jpg';
+                else if (normalizedTitle.includes('hiến máu')) imagePath = 'images/sukien6.jpg';
                 else imagePath = 'images/default.jpg';
             }
 
