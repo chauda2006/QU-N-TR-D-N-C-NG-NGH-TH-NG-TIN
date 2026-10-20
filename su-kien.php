@@ -16,49 +16,23 @@ require_once 'database.php';
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
 <style>
-    /* Video background cố định, bao phủ toàn màn hình và nằm dưới cùng */
-    .video-background {
-        position: fixed;
-        right: 0;
-        bottom: 0;
-        min-width: 100%;
-        min-height: 100%;
-        width: auto;
-        height: auto;
-        z-index: -100; /* Nằm dưới tất cả các nội dung khác */
-        object-fit: cover; /* Đảm bảo video phủ kín màn hình không bị méo */
-        
-        /* TỐI ƯU ĐỘ RÕ NÉT: Tăng độ tương phản (110%) và độ sáng (105%) giúp khử đục, hình ảnh căng nét hơn */
-        filter: contrast(1.1) brightness(1.05) !important;
-        -webkit-filter: contrast(1.1) brightness(1.05) !important;
-        
-        /* Ép card đồ họa xử lý giúp tăng độ nét và khử răng cưa cho video HD */
-        transform: translateZ(0);
-        will-change: transform;
-    }
+   /* Video background cố định, bao phủ toàn màn hình và nằm dưới cùng */
+.video-background {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(-50%, -50%);
+  object-fit: cover; /* Đảm bảo video phủ kín, tự động cắt viền thừa chứ không bị méo */
+  z-index: -100; /* Nằm dưới tất cả các nội dung khác */
+  
+  /* Các thuộc tính tối ưu hiệu năng của bạn */
+  filter: contrast(1.1) brightness(1.05) !important;
+  -webkit-filter: contrast(1.1) brightness(1.05) !important;
+  will-change: transform;
+}
 
-    /* Lớp phủ siêu trong suốt giúp giữ rõ nền video tối đa */
-    .video-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        /* KHỬ ĐỤC TUYỆT ĐỐI: Hạ độ mờ xuống mức cực mỏng (0.1) gần như trong suốt để video hiện rõ mồn một */
-        background: rgba(10, 11, 16, 0.1); 
-        z-index: -99;
-        
-        /* Đảm bảo không dính bất kỳ hiệu ứng blur (làm nhòe) nào từ code cũ */
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
-
-    /* Đảm bảo khối container chính hiển thị đẹp trên nền video */
-    .event-container {
-        position: relative;
-        z-index: 1;
-        padding-top: 30px;
-    }
     /* Tìm đến class của thẻ sự kiện trong file css/su-kien.css và sửa background thành dạng rgba */
 .card, .event-card {
     background: rgba(26, 29, 41, 0.75) !important; /* Giúp hộp sự kiện trong suốt nhìn xuyên thấu qua video phía sau */
