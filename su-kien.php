@@ -35,7 +35,7 @@ require_once 'database.php';
 
     /* Tìm đến class của thẻ sự kiện trong file css/su-kien.css và sửa background thành dạng rgba */
 .card, .event-card {
-    background: rgba(26, 29, 41, 0.75) !important; /* Giúp hộp sự kiện trong suốt nhìn xuyên thấu qua video phía sau */
+    background: rgba(3, 2, 62, 0.67) !important; /* Giúp hộp sự kiện trong suốt nhìn xuyên thấu qua video phía sau */
     backdrop-filter: blur(5px); /* Làm mờ nhẹ phần video đi qua hộp để chữ dễ đọc hơn */
 }
 

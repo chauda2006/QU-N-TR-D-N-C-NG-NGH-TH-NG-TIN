@@ -29,6 +29,16 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             Sự Kiện
                         </a>
                     </li>
+                    <li>
+                        <a href="lich-su.php" class="<?= ($current_page == 'lich-su.php') ? 'active' : ''; ?>">
+                            Lịch Sử
+                        </a>
+                    </li>
+                    <li>
+                        <a href="dang-ky.php" class="<?= ($current_page == 'dang-ky.php') ? 'active' : ''; ?>">
+                            Đăng ký
+                        </a>
+                    </li>
                 </ul>
             </nav>
 
