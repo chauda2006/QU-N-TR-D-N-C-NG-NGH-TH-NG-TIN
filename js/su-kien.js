@@ -105,24 +105,32 @@ document.addEventListener('DOMContentLoaded', function () {
             card.querySelector('.event-description').textContent = description;
             card.querySelector('.event-date').textContent = 'Bắt đầu: ' + formatDate(startDate);
             card.querySelector('.event-location').textContent = 'Địa điểm: ' + location;
-
+          
             const imageValue = getProp(event, 'hinh_anh', 'hinhanh', 'image');
             let imagePath = imageValue ? String(imageValue).trim() : '';
+
             if (!imagePath) {
                 const normalizedTitle = normalizeText(title);
-                if (normalizedTitle.includes('chào tân sinh viên')) imagePath = 'images/sukien1.jpg';
-                else if (normalizedTitle.includes('workshop')) imagePath = 'images/sukien2.jpg';
-                else if (normalizedTitle.includes('hội thảo')) imagePath = 'images/sukien3.jpg';
-                else if (normalizedTitle.includes('hội thao')) imagePath = 'images/sukien4.jpg';
-                else if (normalizedTitle.includes('giao lưu')) imagePath = 'images/sukien5.jpg';
-                else if (normalizedTitle.includes('hiến máu')) imagePath = 'images/sukien6.jpg';
-                else imagePath = 'images/default.jpg';
+
+                if (normalizedTitle.includes('chào tân sinh viên')) {imagePath = 'images/sukien01.jpg';} 
+                else if (normalizedTitle.includes('hội thao')) {imagePath = 'images/sukien02.jpg';} 
+                else if (normalizedTitle.includes('workshop')) { imagePath = 'images/sukien03.jpg';} 
+                else if (normalizedTitle.includes('hiến máu')) { imagePath = 'images/sukien04.jpg';} 
+                else if (normalizedTitle.includes('giao lưu')) {imagePath = 'images/sukien05.jpg';}
+                else if (normalizedTitle.includes('hội thảo')) {imagePath = 'images/sukien06.jpg';} 
+                else {imagePath = 'images/sukien01.jpg';}
+    
             }
 
             const img = card.querySelector('.event-image');
             img.alt = title;
             img.src = imagePath;
-            img.onerror = function () { this.src = 'images/default.jpg'; };
+
+            img.onerror = function () {
+                this.onerror = null;
+                this.src = 'images/sukien01.jpg';
+    };
+
 
             if (isValidEventId(eventId)) {
                 // Hành vi 1: Bấm "Xem chi tiết" ngoài Card
@@ -267,3 +275,41 @@ document.addEventListener('DOMContentLoaded', function () {
         renderEvents(filtered);
     }
 });
+// Xử lý khi nhấn nút "Chọn vị trí ghế ngồi" để chuyển trang
+const btnGoToSeatMap = document.getElementById("btnGoToSeatMap");
+if (btnGoToSeatMap) {
+    btnGoToSeatMap.addEventListener("click", function() {
+        const eventId = document.getElementById("formEventId").value;
+        const fullname = encodeURIComponent(document.getElementById("fullname").value.trim());
+        const email = encodeURIComponent(document.getElementById("email").value.trim());
+
+        if (!eventId) {
+            alert("Không tìm thấy mã sự kiện!");
+            return;
+        }
+
+        // Chuyển hướng sang trang chon-ghe.php kèm theo các thông tin người dùng đang nhập dở
+        window.location.href = `chon-ghe.php?id_su_kien=${eventId}&name=${fullname}&email=${email}`;
+    });
+}
+// XỬ LÝ SỰ KIỆN CLICK NÚT CHỌN VỊ TRÍ GHẾ NGỒI ĐỂ CHUYỂN SANG TRANG CHON-GHE.PHP
+btnGoToSeatMap = document.getElementById("btnGoToSeatMap");
+
+if (btnGoToSeatMap) {
+    btnGoToSeatMap.addEventListener("click", function() {
+        // Lấy mã sự kiện đang được chọn trong input ẩn
+        const eventId = document.getElementById("formEventId").value;
+        
+        // Lấy thông tin họ tên và email sinh viên đang nhập dở
+        const fullname = encodeURIComponent(document.getElementById("fullname").value.trim());
+        const email = encodeURIComponent(document.getElementById("email").value.trim());
+
+        if (!eventId) {
+            alert("Vui lòng đợi hệ thống tải thông tin mã sự kiện!");
+            return;
+        }
+
+        // Tự động chuyển hướng sang trang sơ đồ 200 ghế độc lập kèm theo dữ liệu qua URL GET
+        window.location.href = "chon-ghe.php?id_su_kien=" + eventId + "&name=" + fullname + "&email=" + email;
+    });
+}
