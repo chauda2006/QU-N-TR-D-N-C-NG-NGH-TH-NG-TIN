@@ -12,6 +12,7 @@ require_once 'database.php';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/header.css">
     <link rel="stylesheet" href="css/su-kien.css">
+    <link rel="stylesheet" href="css/model-su-kien.css">
 
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
@@ -151,22 +152,16 @@ require_once 'database.php';
                     <div id="modalRegisterSection">
                         <hr id="modalRegisterDivider" style="border-color:#444;">
                         <h6 style="color:#10b981;" class="fw-bold mb-3">
-                            <i class="bi bi-pencil-square me-2"></i>ĐĂNG KÝ THAM GIA SỰ KIỆN
+                            <i class="bi bi-pencil-square me-2"></i>BẠN CHẮC CHẮN MUỐN THAM GIA CHỨ?
                         </h6>
                         <div id="registerAlert" class="alert d-none mb-3" style="font-size: 14px; padding: 10px;"></div>
                         <form id="modalRegisterForm">
                             <input type="hidden" id="formEventId">
-                            <div class="mb-3">
-                                <label for="fullname" class="form-label small text-muted">Họ và tên người đăng ký <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="fullname" required placeholder="Nhập họ và tên của bạn..." style="background-color: #0f111a; border-color: #2d3142; color: #fff;">
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label small text-muted">Địa chỉ Email liên hệ <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" required placeholder="Nhập email của bạn..." style="background-color: #0f111a; border-color: #2d3142; color: #fff;">
-                            </div>
-                            <button type="submit" id="btnSubmitModal" class="btn btn-success w-100 fw-bold py-2 mt-2">
-                                <i class="bi bi-send-check me-2"></i>Xác nhận gửi đăng ký
-                            </button>
+                            <div class="text-center mt-3">
+    <a id="btnRegisterModal" href="dang-ky.php" class="btn btn-danger w-100 fw-bold py-2">
+        <i class="bi bi-pencil-square me-2"></i>Đăng ký tham gia
+    </a>
+</div>
                         </form>
                     </div>
                 </div>
