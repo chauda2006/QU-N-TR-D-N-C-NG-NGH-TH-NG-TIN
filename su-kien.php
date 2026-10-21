@@ -8,7 +8,17 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
         <!-- 🌟 ĐỔI DẤU + CŨ THÀNH ICON PHÁT SÁNG CAO CẤP -->
         <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
     </a>
+   <!-- Nút Xóa sự kiện -->
+<a href="user/delete.php" class="btn-space-danger">
+    <i class="bi bi-gear-fill"></i> Xóa
+</a>
+
+<!-- Nút Sửa sự kiện -->
+<a href="user/xuly_sua.php" class="btn-space-warning">
+    <i class="bi bi-gear-fill"></i> Sửa
+</a>
 </div>
+
 <?php endif; ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -25,6 +35,61 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
 <style>
+/* ==========================================================================
+   CSS CHO 2 NÚT XÓA & SỬA GIỐNG HỆT NÚT ĐĂNG SỰ KIỆN
+   ========================================================================== */
+
+.btn-space-danger, .btn-space-warning {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ff1e56, #80002a) !important; /* Nền gradient Đỏ - Hồng rực rỡ */
+    color: #ffffff !important;
+    padding: 12px 24px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    text-decoration: none !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    
+    /* Viền khung Lục Neon */
+    border: 2px solid #00ffcc !important;
+    position: relative;
+    
+    /* Hiệu ứng bóng đổ hào quang phát sáng */
+    box-shadow: 0 0 20px rgba(255, 30, 86, 0.8), 
+                0 0 10px rgba(0, 255, 204, 0.8),
+                inset 0 0 10px rgba(255, 255, 255, 0.4) !important;
+    
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1;
+}
+
+/* Định dạng icon bên trong nút Xóa & Sửa */
+.btn-space-danger i, .btn-space-warning i {
+    font-size: 18px;
+    color: #c6e2ddf4 !important;
+    filter: drop-shadow(0 0 10px #00ffcc7f) !important;
+    display: flex;
+}
+
+/* Hiệu ứng khi rê chuột vào nút Xóa & Sửa */
+.btn-space-danger:hover, .btn-space-warning:hover {
+    background: linear-gradient(135deg, #ff4d79, #00ffcc) !important;
+    color: #02010a !important;
+    border-color: #ff1e56 !important;
+    box-shadow: 0 0 30px rgba(0, 255, 204, 1), 
+                0 0 20px rgba(255, 30, 86, 1),
+                0 0 50px rgba(0, 255, 204, 0.6) !important;
+    transform: translateY(-3px) scale(1.02) !important;
+}
+
+.btn-space-danger:hover i, .btn-space-warning:hover i {
+    color: #02010a !important;
+    filter: drop-shadow(0 0 12px rgba(255, 30, 86, 0.9)) !important;
+}
     /* ==========================================================================
    CSS CHO NÚT BẤM VÀ ICON DẤU CỘNG PHÁT SÁNG CAO CẤP (KHÔNG BỊ XẤU)
    ========================================================================== */
@@ -246,5 +311,12 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/su-kien.js"></script>
+    <!-- Truyền quyền từ PHP sang JavaScript -->
+<script>
+    const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
+</script>
+
+<!-- Sau đó mới gọi file js -->
+<script src="js/su-kien.js"></script>
 </body>
 </html>
