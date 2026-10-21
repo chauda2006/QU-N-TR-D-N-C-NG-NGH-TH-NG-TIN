@@ -14,14 +14,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($ho_ten) && !empty($email) && !empty($mssv) && $su_kien_id > 0) {
         try {
-            // Lưu dữ liệu vào bảng dang_ky_su_kien
-            $sql_insert = "INSERT INTO dang_ky_su_kien (ho_ten, email, mssv, su_kien_id, ngay_dang_ky) 
-                           VALUES (:ho_ten, :email, :mssv, :su_kien_id, NOW())";
+            // 1. Kiểm tra sinh viên đã có trong hệ thống chưa (tránh lỗi khóa ngoại)
+            $sql_check_sv = "SELECT ma_sv FROM sinh_vien WHERE ma_sv = :mssv";
+            $stmt_check = $conn->prepare($sql_check_sv);
+            $stmt_check->execute([':mssv' => $mssv]);
+            
+            if ($stmt_check->rowCount() == 0) {
+                // Nếu là sinh viên mới, tự động tạo hồ sơ vào bảng sinh_vien
+                $sql_add_sv = "INSERT INTO sinh_vien (ma_sv, ho_ten, email, mat_khau) VALUES (:mssv, :ho_ten, :email, '123456')";
+                $stmt_add = $conn->prepare($sql_add_sv);
+                $stmt_add->execute([
+                    ':mssv' => $mssv,
+                    ':ho_ten' => $ho_ten,
+                    ':email' => $email
+                ]);
+            }
+
+            // 2. Lưu dữ liệu vào bảng dang_ky (Chuẩn theo cấu trúc CSDL của nhóm)
+            $sql_insert = "INSERT INTO dang_ky (ma_sv, ma_sukien) VALUES (:mssv, :su_kien_id)";
             $stmt_insert = $conn->prepare($sql_insert);
             $check = $stmt_insert->execute([
-                ':ho_ten'     => $ho_ten,
-                ':email'      => $email,
-                ':mssv'       => $mssv,
+                ':mssv' => $mssv,
                 ':su_kien_id' => $su_kien_id
             ]);
 
@@ -30,8 +43,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $message_type = "success";
             }
         } catch (PDOException $e) {
-            $message = "Lỗi khi đăng ký: " . $e->getMessage();
-            $message_type = "danger";
+            // Xử lý báo lỗi nếu sinh viên đăng ký 1 sự kiện 2 lần (Lỗi Unique Key)
+            if ($e->getCode() == 23000) {
+                $message = "Bạn đã đăng ký sự kiện này rồi!";
+                $message_type = "warning";
+            } else {
+                $message = "Lỗi hệ thống: " . $e->getMessage();
+                $message_type = "danger";
+            }
         }
     } else {
         $message = "Vui lòng điền đầy đủ thông tin và chọn sự kiện!";
@@ -86,7 +105,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
 
-    <!-- Video background -->
     <video autoplay loop muted playsinline preload="auto" class="video-background">
         <source src="videos/video01.mp4" type="video/mp4">
     </video>
@@ -125,7 +143,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-4">
                     <label for="su_kien_id" class="form-label small text-muted">Chọn sự kiện tham gia <span class="text-danger">*</span></label>
                     <select class="form-select" id="su_kien_id" name="su_kien_id" required style="background-color: #0f111a; border-color: #2d3142; color: #fff;">
-                        <option value="">-- Đang tải danh sách sự kiện... --</option>
+                        <option value="">-- Chọn sự kiện --</option>
+                        <?php
+                        // Tải danh sách sự kiện trực tiếp bằng PHP
+                        try {
+                            $sql_sk = "SELECT ma_sukien, ten_sukien FROM su_kien";
+                            $stmt_sk = $conn->query($sql_sk);
+                            
+                            // Lấy ID sự kiện từ URL nếu sinh viên click từ trang danh sách
+                            $selected_id = isset($_GET['event_id']) ? intval($_GET['event_id']) : (isset($_GET['id']) ? intval($_GET['id']) : 0);
+                            
+                            while ($row = $stmt_sk->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($row['ma_sukien'] == $selected_id) ? 'selected' : '';
+                                echo '<option value="' . $row['ma_sukien'] . '" ' . $selected . '>' . htmlspecialchars($row['ten_sukien']) . '</option>';
+                            }
+                        } catch (PDOException $e) {
+                            echo '<option value="">Lỗi tải danh sách sự kiện</option>';
+                        }
+                        ?>
                     </select>
                 </div>
 
@@ -137,50 +172,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const select = document.getElementById('su_kien_id');
-
-            // Lấy event_id từ tham số URL nếu người dùng nhấn từ trang su-kien.php[cite: 6]
-            const urlParams = new URLSearchParams(window.location.search);
-            const selectedEventId = urlParams.get('event_id') || urlParams.get('id');
-
-            // Gọi API lấy danh sách sự kiện
-            fetch('api_su_kien.php')
-                .then(response => response.json())
-                .then(data => {
-                    select.innerHTML = '<option value="">-- Chọn sự kiện --</option>';
-
-                    let events = Array.isArray(data) ? data : (data.data || data.result || data.events || []);
-
-                    if (events.length > 0) {
-                        events.forEach(item => {
-                            let id = item.id || item.ma_su_kien || item.id_su_kien || item.event_id;
-                            let title = item.ten_su_kien || item.tieu_de || item.ten || item.title || item.name;
-
-                            if (id && title) {
-                                let option = document.createElement('option');
-                                option.value = id;
-                                option.textContent = title;
-
-                                // Tự động chọn sự kiện nếu truyền ID từ trang su-kien.php sang[cite: 6]
-                                if (selectedEventId && id == selectedEventId) {
-                                    option.selected = true;
-                                }
-
-                                select.appendChild(option);
-                            }
-                        });
-                    } else {
-                        select.innerHTML = '<option value="">Không có sự kiện nào sẵn có</option>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi nạp dữ liệu:', error);
-                    select.innerHTML = '<option value="">Không thể tải danh sách sự kiện</option>';
-                });
-        });
-    </script>
+    <!-- Đã xóa bỏ đoạn mã JavaScript gây lỗi fetch API -->
 </body>
 </html>
