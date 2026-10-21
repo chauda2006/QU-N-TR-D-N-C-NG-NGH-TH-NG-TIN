@@ -1,7 +1,15 @@
-<?php 
-ob_start(); // Bật bộ đệm đầu ra để tránh lỗi "headers already sent" khi gọi session_start()
-require_once 'database.php'; 
+<?php
+session_start();
+// Hiển thị nút Đăng sự kiện nếu là Quản lý sự kiện hoặc Admin
+if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')): 
 ?>
+<div style="text-align: right; margin: 20px 20px 0 0;">
+    <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
+        <!-- 🌟 ĐỔI DẤU + CŨ THÀNH ICON PHÁT SÁNG CAO CẤP -->
+        <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
+    </a>
+</div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,57 +19,94 @@ require_once 'database.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/header.css">
-    <link rel="stylesheet" href="css/su-kien.css">
+    <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
+        <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
 
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
 <style>
-    /* Video background cố định, bao phủ toàn màn hình và nằm dưới cùng */
-    .video-background {
-        position: fixed;
-        right: 0;
-        bottom: 0;
-        min-width: 100%;
-        min-height: 100%;
-        width: auto;
-        height: auto;
-        z-index: -100; /* Nằm dưới tất cả các nội dung khác */
-        object-fit: cover; /* Đảm bảo video phủ kín màn hình không bị méo */
-        
-        /* TỐI ƯU ĐỘ RÕ NÉT: Tăng độ tương phản (110%) và độ sáng (105%) giúp khử đục, hình ảnh căng nét hơn */
-        filter: contrast(1.1) brightness(1.05) !important;
-        -webkit-filter: contrast(1.1) brightness(1.05) !important;
-        
-        /* Ép card đồ họa xử lý giúp tăng độ nét và khử răng cưa cho video HD */
-        transform: translateZ(0);
-        will-change: transform;
-    }
+    /* ==========================================================================
+   CSS CHO NÚT BẤM VÀ ICON DẤU CỘNG PHÁT SÁNG CAO CẤP (KHÔNG BỊ XẤU)
+   ========================================================================== */
 
-    /* Lớp phủ siêu trong suốt giúp giữ rõ nền video tối đa */
-    .video-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        /* KHỬ ĐỤC TUYỆT ĐỐI: Hạ độ mờ xuống mức cực mỏng (0.1) gần như trong suốt để video hiện rõ mồn một */
-        background: rgba(10, 11, 16, 0.1); 
-        z-index: -99;
-        
-        /* Đảm bảo không dính bất kỳ hiệu ứng blur (làm nhòe) nào từ code cũ */
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
+.btn-space-manager {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 10px; /* Khoảng cách cân đối giữa icon và chữ */
+    background: linear-gradient(135deg, #ff1e56, #80002a) !important; /* Nền gradient Đỏ - Hồng rực rỡ */
+    color: #ffffff !important;
+    padding: 12px 24px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    text-decoration: none !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    
+    /* Khung viền 3D màu Lục Neon */
+    border: 2px solid #00ffcc !important;
+    position: relative;
+    
+    /* Hiệu ứng bóng đổ đa tầng cho cả nút bấm (Neon Đỏ - Lục) */
+    box-shadow: 0 0 20px rgba(255, 30, 86, 0.8), 
+                0 0 10px rgba(0, 255, 204, 0.8),
+                inset 0 0 10px rgba(255, 255, 255, 0.4) !important;
+    
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1;
+}
 
-    /* Đảm bảo khối container chính hiển thị đẹp trên nền video */
-    .event-container {
-        position: relative;
-        z-index: 1;
-        padding-top: 30px;
-    }
+/* 🌟 PHẦN QUAN TRỌNG: CSS ĐỂ ICON PHÁT SÁNG RỰC RỠ, SẮC NÉT */
+.btn-space-manager i {
+    font-size: 18px; /* Tăng kích thước icon cho cân đối */
+    color: #c6e2ddf4 !important; /* Màu xanh lục neon sắc nét (đồng bộ với viền) */
+    
+    /* Áp dụng hào quang tỏa sáng Neon cho chính icon */
+    filter: drop-shadow(0 0 10px #00ffcc7f) drop-shadow(0 0 3px rgba(124, 132, 131, 0.61)) !important;
+    
+    display: flex; /* Đảm bảo icon được căn giữa hoàn hảo */
+    margin-top: -1px; /* Tinh chỉnh icon lên trên 1px cho thẳng hàng */
+}
+
+/* Hiệu ứng quét sáng lướt qua thân nút khi hover */
+.btn-space-manager:hover {
+    background: linear-gradient(135deg, #ff4d79, #00ffcc) !important;
+    color: #02010a !important; /* Chuyển chữ sang tối để icon nổi bật */
+    border-color: #ff1e56 !important; /* Viền chuyển sang Đỏ rực khi hover */
+    
+    /* Hiệu ứng Glow tỏa rộng hơn */
+    box-shadow: 0 0 30px rgba(0, 255, 204, 1), 
+                0 0 20px rgba(255, 30, 86, 1),
+                0 0 50px rgba(0, 255, 204, 0.6) !important;
+                
+    transform: translateY(-3px) scale(1.02) !important; /* Nổi khối nhẹ */
+}
+
+/* Khi hover, làm cho icon phát sáng mạnh hơn nữa với sắc đỏ neon */
+.btn-space-manager:hover i {
+    color: #02010a !important; /* Chuyển màu icon sang tối */
+    filter: drop-shadow(0 0 12px rgba(255, 30, 86, 0.9)) !important; /* Hào quang Đỏ */
+}
+   /* Video background cố định, bao phủ toàn màn hình và nằm dưới cùng */
+.video-background {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(-50%, -50%);
+  object-fit: cover; /* Đảm bảo video phủ kín, tự động cắt viền thừa chứ không bị méo */
+  z-index: -100; /* Nằm dưới tất cả các nội dung khác */
+  
+  /* Các thuộc tính tối ưu hiệu năng của bạn */
+  filter: contrast(1.1) brightness(1.05) !important;
+  -webkit-filter: contrast(1.1) brightness(1.05) !important;
+  will-change: transform;
+}
+
     /* Tìm đến class của thẻ sự kiện trong file css/su-kien.css và sửa background thành dạng rgba */
 .card, .event-card {
-    background: rgba(26, 29, 41, 0.75) !important; /* Giúp hộp sự kiện trong suốt nhìn xuyên thấu qua video phía sau */
+    background: rgba(3, 2, 62, 0.67) !important; /* Giúp hộp sự kiện trong suốt nhìn xuyên thấu qua video phía sau */
     backdrop-filter: blur(5px); /* Làm mờ nhẹ phần video đi qua hộp để chữ dễ đọc hơn */
 }
 
@@ -177,22 +222,16 @@ require_once 'database.php';
                     <div id="modalRegisterSection">
                         <hr id="modalRegisterDivider" style="border-color:#444;">
                         <h6 style="color:#10b981;" class="fw-bold mb-3">
-                            <i class="bi bi-pencil-square me-2"></i>ĐĂNG KÝ THAM GIA SỰ KIỆN
+                            <i class="bi bi-pencil-square me-2"></i>BẠN CHẮC CHẮN MUỐN THAM GIA CHỨ?
                         </h6>
                         <div id="registerAlert" class="alert d-none mb-3" style="font-size: 14px; padding: 10px;"></div>
                         <form id="modalRegisterForm">
                             <input type="hidden" id="formEventId">
-                            <div class="mb-3">
-                                <label for="fullname" class="form-label small text-muted">Họ và tên người đăng ký <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="fullname" required placeholder="Nhập họ và tên của bạn..." style="background-color: #0f111a; border-color: #2d3142; color: #fff;">
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label small text-muted">Địa chỉ Email liên hệ <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" required placeholder="Nhập email của bạn..." style="background-color: #0f111a; border-color: #2d3142; color: #fff;">
-                            </div>
-                            <button type="submit" id="btnSubmitModal" class="btn btn-success w-100 fw-bold py-2 mt-2">
-                                <i class="bi bi-send-check me-2"></i>Xác nhận gửi đăng ký
-                            </button>
+                            <div class="text-center mt-3">
+    <a id="btnRegisterModal" href="dang-ky.php" class="btn btn-danger w-100 fw-bold py-2">
+        <i class="bi bi-pencil-square me-2"></i>Đăng ký tham gia
+    </a>
+</div>
                         </form>
                     </div>
                 </div>
