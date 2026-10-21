@@ -36,7 +36,7 @@ $message_type = "";
 // Lấy thông tin tài khoản đang đăng nhập
 $ho_ten_hien_tai  =$_SESSION['ho_ten'] ?? '';
 $mssv_hien_tai    =$_SESSION['ma_sv'] ?? '';
-$user_id_hien_tai =$_SESSION['id'] ?? 4; 
+$user_id_hien_tai = $_SESSION['user_id'] ?? $_SESSION['id'] ?? 4;
 $email_hien_tai   =$_SESSION['email'] ?? '';
 
 // Tự động kéo Email từ bảng users nếu session chưa lưu
