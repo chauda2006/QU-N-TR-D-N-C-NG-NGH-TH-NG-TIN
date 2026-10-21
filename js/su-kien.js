@@ -314,3 +314,119 @@ if (btnGoToSeatMap) {
         window.location.href = "chon-ghe.php?id_su_kien=" + eventId + "&name=" + fullname + "&email=" + email;
     });
 }
+const deleteBtnEl = card.querySelector('.btn-delete-event');
+if (deleteBtnEl) {
+    deleteBtnEl.addEventListener('click', function () {
+        const id = this.getAttribute('data-id');
+        if (confirm(`Bạn có chắc chắn muốn xóa sự kiện này không?`)) {
+            // Đã chỉnh đường dẫn vào đúng thư mục user/
+            window.location.href = `user/delete.php?ma_sukien=${id}`;
+        }
+    });
+}
+events.forEach(function (event) {
+            const title = getEventTitle(event);
+            const eventId = getEventId(event);
+            const description = getProp(event, 'mo_ta', 'mota', 'chitiet', 'description') || 'Không có mô tả.';
+            const startDate = getProp(event, 'thoi_gian_bat_dau', 'batdau', 'ngay_to_chuc', 'ngay', 'date');
+            const location = getProp(event, 'ten_diadiem', 'diadiem', 'dia_diem', 'vi_tri', 'diachi') || 'Chưa cập nhật';
+            const cardIndex = allEvents.indexOf(event);
+
+            // Nút Xem chi tiết
+            const detailButton = isValidEventId(eventId)
+                ? `<button type="button" class="btn btn-outline-success btn-sm btn-open-detail fw-bold me-1" data-index="${cardIndex}" style="border-color: #00f2c2; color: #00f2c2;"><i class="bi bi-eye me-1"></i> Chi tiết</button>`
+                : `<button type="button" class="btn btn-outline-secondary btn-sm me-1" disabled><i class="bi bi-eye me-1"></i> Chi tiết</button>`;
+
+            // NÚT SỬA VÀ XÓA XUẤT HIỆN TRỰC TIẾP TRÊN MỖI CARD SỰ KIỆN
+            const adminActionButtons = isValidEventId(eventId)
+                ? `<button type="button" class="btn btn-warning btn-sm btn-edit-event me-1" data-id="${eventId}" data-index="${cardIndex}" title="Sửa sự kiện"><i class="bi bi-pencil-square"></i> Sửa</button>
+                   <button type="button" class="btn btn-danger btn-sm btn-delete-event" data-id="${eventId}" title="Xóa sự kiện"><i class="bi bi-trash"></i> Xóa</button>`
+                : '';
+
+            const card = document.createElement('div');
+            card.className = 'col-md-6 col-lg-4 mb-4';
+            card.innerHTML = `
+                <div class="card event-card h-100" style="border: 1px solid rgba(0, 242, 194, 0.3); border-radius: 16px; overflow: hidden; background: rgba(3, 2, 62, 0.67);">
+                    <div style="height: 200px; width: 100%; overflow: hidden; background: #03022e; position: relative;">
+                        <img class="event-image card-img-top" alt="${title}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div class="card-body d-flex flex-column" style="padding: 20px;">
+                        <h5 class="event-title font-weight-bold" style="color: #00f2c2 !important; font-size: 18px; margin-bottom: 12px;"></h5>
+                        <p class="event-description text-muted small flex-grow-1" style="color: #cbd5e1 !important; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"></p>
+                        <p class="event-date text-light small mb-2"><i class="bi bi-clock text-success me-1"></i><span></span></p>
+                        <p class="event-location text-light small mb-3"><i class="bi bi-geo-alt text-success me-1"></i><span></span></p>
+                        <div class="event-actions mt-auto d-flex justify-content-between align-items-center">
+                            ${detailButton}
+                            <div class="d-flex align-items-center">${adminActionButtons}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            card.querySelector('.event-title').textContent = title;
+            card.querySelector('.event-description').textContent = description;
+            card.querySelector('.event-date span').textContent = formatDate(startDate);
+            card.querySelector('.event-location span').textContent = location;
+
+            // Xử lý đường dẫn ảnh
+            const imageValue = getProp(event, 'anh_hien_thi', 'anh_bia', 'hinh_anh', 'anh', 'file_name', 'image');
+            let imagePath = imageValue ? String(imageValue).trim() : '';
+            if (imagePath && !imagePath.startsWith('http://') && !imagePath.startsWith('https://') && !imagePath.startsWith('/') && !imagePath.startsWith('images/')) {
+                imagePath = 'images/' + imagePath;
+            }
+            if (!imagePath) imagePath = 'images/sukien1.jpg';
+
+            const img = card.querySelector('.event-image');
+            img.src = imagePath;
+            img.onerror = function () { this.onerror = null; this.src = 'images/sukien1.jpg'; };
+
+            // Gắn sự kiện Xem chi tiết
+            if (isValidEventId(eventId)) {
+                const detailBtnEl = card.querySelector('.btn-open-detail');
+                if (detailBtnEl) {
+                    detailBtnEl.addEventListener('click', function () {
+                        showEventDetails(allEvents[this.getAttribute('data-index')], 'view');
+                    });
+                }
+
+                // GẮN SỰ KIỆN NÚT XÓA -> Gọi file user/delete.php
+                const deleteBtnEl = card.querySelector('.btn-delete-event');
+                if (deleteBtnEl) {
+                    deleteBtnEl.addEventListener('click', function () {
+                        const id = this.getAttribute('data-id');
+                        if (confirm(`Bạn có chắc chắn muốn xóa sự kiện "${title}" không?`)) {
+                            window.location.href = `user/delete.php?ma_sukien=${id}`;
+                        }
+                    });
+                }
+
+                // GẮN SỰ KIỆN NÚT SỬA -> Nhập tên mới để sửa nhanh
+                const editBtnEl = card.querySelector('.btn-edit-event');
+                if (editBtnEl) {
+                    editBtnEl.addEventListener('click', function () {
+                        const id = this.getAttribute('data-id');
+                        const newTitle = prompt("Nhập tên sự kiện mới:", title);
+                        if (newTitle !== null && newTitle.trim() !== "") {
+                            fetch('api_su_kien.php', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    ma_sukien: id,
+                                    ten_su_kien: newTitle.trim(),
+                                    thoi_gian_bat_dau: startDate,
+                                    dia_diem: location,
+                                    mo_ta: description
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                alert(data.message || 'Cập nhật thành công!');
+                                loadEventData();
+                            });
+                        }
+                    });
+                }
+            }
+
+            eventList.appendChild(card);
+        });
