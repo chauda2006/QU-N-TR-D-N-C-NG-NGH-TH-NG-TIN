@@ -25,7 +25,12 @@ switch ($method) {
     case 'GET':
         if (isset($_GET['ma_sukien']) || isset($_GET['id'])) {
             $id_val = $_GET['ma_sukien'] ?? $_GET['id'];
-            $query = "SELECT * FROM su_kien WHERE ma_sukien = :id OR id = :id LIMIT 1";
+            
+            // Truy vấn lấy chi tiết sự kiện kết hợp lấy tên địa điểm và vị trí từ bảng dia_diem
+            $query = "SELECT su_kien.*, dia_diem.ten_diadiem, dia_diem.vi_tri as diadiem_vi_tri 
+                      FROM su_kien 
+                      LEFT JOIN dia_diem ON su_kien.ma_diadiem = dia_diem.ma_diadiem 
+                      WHERE su_kien.ma_sukien = :id OR su_kien.id = :id LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(':id', $id_val);
             $stmt->execute();
@@ -46,7 +51,11 @@ switch ($method) {
                 echo json_encode(["status" => "error", "message" => "Không tìm thấy sự kiện."]);
             }
         } else {
-            $query = "SELECT * FROM su_kien ORDER BY thoi_gian_bat_dau DESC";
+            // Truy vấn lấy danh sách toàn bộ sự kiện kết hợp LEFT JOIN bảng dia_diem
+            $query = "SELECT su_kien.*, dia_diem.ten_diadiem, dia_diem.vi_tri as diadiem_vi_tri 
+                      FROM su_kien 
+                      LEFT JOIN dia_diem ON su_kien.ma_diadiem = dia_diem.ma_diadiem 
+                      ORDER BY su_kien.thoi_gian_bat_dau DESC";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -96,6 +105,7 @@ switch ($method) {
 
                 if (in_array('thoi_gian_bat_dau', $columns)) $insert_data['thoi_gian_bat_dau'] = $data['thoi_gian_bat_dau'] ?? null;
                 if (in_array('thoi_gian_ket_thuc', $columns)) $insert_data['thoi_gian_ket_thuc'] = $data['thoi_gian_ket_thuc'] ?? null;
+                if (in_array('ma_diadiem', $columns)) $insert_data['ma_diadiem'] = $data['ma_diadiem'] ?? null;
                 if (in_array('dia_diem', $columns)) $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
                 if (in_array('vi_tri', $columns)) $insert_data['vi_tri'] = $data['vi_tri'] ?? null;
                 if (in_array('doi_tuong_tham_gia', $columns)) $insert_data['doi_tuong_tham_gia'] = $data['doi_tuong_tham_gia'] ?? null;
