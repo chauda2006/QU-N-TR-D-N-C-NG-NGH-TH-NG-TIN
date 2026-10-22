@@ -34,9 +34,7 @@ $message = "";
 $message_type = "";
 
 // Lấy thông tin tài khoản đang đăng nhập
-$ho_ten_hien_tai  =$_SESSION['ho_ten'] ?? '';
-$mssv_hien_tai    =$_SESSION['ma_sv'] ?? '';
-$user_id_hien_tai = $_SESSION['user_id'] ?? $_SESSION['id'] ?? 4;
+$ho_ten_hien_tai  = $_SESSION['ho_ten'] ?? '';$mssv_hien_tai    = $_SESSION['ma_sv'] ?? '';$user_id_hien_tai = $_SESSION['user_id'] ?? $_SESSION['id'] ?? 4; 
 $email_hien_tai   =$_SESSION['email'] ?? '';
 
 // Tự động kéo Email từ bảng users nếu session chưa lưu
@@ -60,14 +58,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         try {
             $conn->beginTransaction();
 
-            // Kiểm tra ghế trống
+            // 1. Kiểm tra ghế trống xem có ai nhanh tay đặt trước không
             $check_ghe =$conn->prepare("SELECT id FROM dat_ghe WHERE su_kien_id = ? AND ghe_id = ? AND trang_thai = 'DA_DAT'");
             $check_ghe->execute([$su_kien_id,$ghe_id]);
             if ($check_ghe->rowCount() > 0) {
                 throw new Exception("Rất tiếc, ghế này vừa bị người khác đặt mất. Vui lòng chọn ghế khác!");
             }
 
-            // Xử lý thông tin sinh viên
+            // 2. Xử lý thông tin sinh viên mới nếu chưa có trong DB
             $stmt_check =$conn->prepare("SELECT ma_sv FROM sinh_vien WHERE ma_sv = :mssv");
             $stmt_check->execute([':mssv' =>$mssv]);
             if ($stmt_check->rowCount() == 0) {
@@ -75,29 +73,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_add->execute([':mssv' =>$mssv, ':ho_ten' => $ho_ten, ':email' =>$email]);
             }
 
-            // Lưu lịch sử đăng ký
-            $stmt_insert =$conn->prepare("INSERT INTO dang_ky (ma_sv, ma_sukien) VALUES (:mssv, :su_kien_id)");
-            $stmt_insert->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+            // 3. Xử lý lưu đăng ký sự kiện (Cho phép đăng ký lại nếu trước đó Đã hủy)
+            $stmt_check_dk =$conn->prepare("SELECT trang_thai FROM dang_ky WHERE ma_sv = :mssv AND ma_sukien = :su_kien_id");
+            $stmt_check_dk->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+            $dk_exist =$stmt_check_dk->fetch(PDO::FETCH_ASSOC);
 
-            // Chốt ghế
-            $stmt_dat =$conn->prepare("INSERT INTO dat_ghe (su_kien_id, ghe_id, user_id, trang_thai) VALUES (:su_kien_id, :ghe_id, :user_id, 'DA_DAT')");
+            if ($dk_exist) {
+                if ($dk_exist['trang_thai'] == 'Đã hủy') {
+                    // Nếu đã hủy -> Cập nhật lại thành Đã đăng ký và làm mới thời gian
+                    $stmt_update_dk =$conn->prepare("UPDATE dang_ky SET trang_thai = 'Đã đăng ký', thoi_gian_dang_ky = current_timestamp() WHERE ma_sv = :mssv AND ma_sukien = :su_kien_id");
+                    $stmt_update_dk->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+                } else {
+                    // Nếu đang ở trạng thái 'Đã đăng ký' thì chặn lại
+                    throw new Exception("Bạn đã đăng ký tham gia sự kiện này rồi!");
+                }
+            } else {
+                // Nếu chưa từng đăng ký -> Thêm mới
+                $stmt_insert =$conn->prepare("INSERT INTO dang_ky (ma_sv, ma_sukien, trang_thai) VALUES (:mssv, :su_kien_id, 'Đã đăng ký')");
+                $stmt_insert->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+            }
+
+            // 4. Chốt ghế ngồi (Dùng ON DUPLICATE KEY để ghi đè lên các ghế cũ bị hủy)
+            $stmt_dat =$conn->prepare("
+                INSERT INTO dat_ghe (su_kien_id, ghe_id, user_id, trang_thai, ngay_dat) 
+                VALUES (:su_kien_id, :ghe_id, :user_id, 'DA_DAT', current_timestamp())
+                ON DUPLICATE KEY UPDATE user_id = :user_id2, trang_thai = 'DA_DAT', ngay_dat = current_timestamp()
+            ");
             $stmt_dat->execute([
                 ':su_kien_id' => $su_kien_id,
                 ':ghe_id'     => $ghe_id,
-                ':user_id'    => $user_id_hien_tai
+                ':user_id'    => $user_id_hien_tai,
+                ':user_id2'   => $user_id_hien_tai
             ]);
 
             $conn->commit();$message = "Đăng ký thành công! Chỗ ngồi của bạn đã được xác nhận.";
             $message_type = "success";
 
-        } catch (PDOException $e) {$conn->rollBack();
-            if ($e->getCode() == 23000) {$message = "Bạn đã đăng ký tham gia sự kiện này rồi!";
-            } else {
-                $message = "Lỗi hệ thống: " . $e->getMessage();
-            }
-            $message_type = "warning";
         } catch (Exception $e) {
-            $conn->rollBack();$message = $e->getMessage();$message_type = "danger";
+            $conn->rollBack();$message = $e->getMessage();$message_type = "warning";
         }
     } else {
         $message = "Vui lòng điền đầy đủ thông tin và chọn vị trí ghế ngồi!";
@@ -127,7 +140,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             min-height: 85vh; display: flex; align-items: center; justify-content: center; padding: 30px 15px;
         }
         .register-card {
-            background: rgba(45, 53, 74, 0.92) !important; /* Làm nền form sáng và trong trẻo hơn */
+            background: rgba(45, 53, 74, 0.92) !important; 
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.15); 
             border-radius: 12px; color: #ffffff;
@@ -135,12 +148,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
         .input-readonly {
-            background-color: rgba(0, 0, 0, 0.25) !important; /* Phân biệt rõ ô bị khóa */
+            background-color: rgba(0, 0, 0, 0.25) !important; 
             border-color: rgba(255, 255, 255, 0.1) !important; 
             color: #adb5bd !important; cursor: not-allowed;
         }
         .form-control:not(.input-readonly), .form-select {
-            background-color: rgba(255, 255, 255, 0.08) !important; /* Làm sáng các ô nhập liệu */
+            background-color: rgba(255, 255, 255, 0.08) !important; 
             border-color: rgba(255, 255, 255, 0.3) !important;
             color: #fff !important;
         }
@@ -150,15 +163,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
         }
         
-        /* Giao diện Sơ đồ ghế */
         .seat-map-container {
             margin-top: 15px; padding: 15px; background: rgba(0, 0, 0, 0.2); 
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 8px; max-height: 280px; overflow-y: auto; display: none;
         }
-        .seat-grid {
-            display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-        }
+        .seat-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .seat {
             width: 40px; height: 40px; border-radius: 6px; border: 1px solid #4a4e69; 
             background: #1a1d29; color: #fff; display: flex; align-items: center; justify-content: center; 
@@ -169,9 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .seat.booked { background: #dc3545; border-color: #dc3545; color: #fff; cursor: not-allowed; opacity: 0.6; }
         .seat.selected { background: #0d6efd; border-color: #0d6efd; box-shadow: 0 0 10px #0d6efd; }
         
-        .seat-legend {
-            display: flex; justify-content: center; gap: 15px; margin-top: 15px; font-size: 13px;
-        }
+        .seat-legend { display: flex; justify-content: center; gap: 15px; margin-top: 15px; font-size: 13px; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .legend-box { width: 15px; height: 15px; border-radius: 3px; }
     </style>
@@ -221,7 +229,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <option value="" class="text-white">-- Click để chọn sự kiện --</option>
                         <?php
                         try {
-                            $stmt_sk =$conn->query("SELECT ma_sukien, ten_sukien FROM su_kien");
+                            // CẬP NHẬT: Thêm điều kiện thoi_gian_bat_dau >= NOW() để ẩn sự kiện quá hạn
+                            $stmt_sk =$conn->query("SELECT ma_sukien, ten_sukien FROM su_kien WHERE thoi_gian_bat_dau >= NOW() ORDER BY thoi_gian_bat_dau ASC");
                             $selected_id = isset($_GET['event_id']) ? intval($_GET['event_id']) : 0;
                             while ($row = $stmt_sk->fetch(PDO::FETCH_ASSOC)) {$selected = ($row['ma_sukien'] ==$selected_id) ? 'selected' : '';
                                 echo '<option class="text-dark" value="' . $row['ma_sukien'] . '" ' . $selected . '>' . htmlspecialchars($row['ten_sukien']) . '</option>';
