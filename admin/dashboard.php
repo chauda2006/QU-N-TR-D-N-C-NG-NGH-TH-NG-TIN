@@ -8,9 +8,42 @@ require_once __DIR__ . '/../database.php';   // Kết nối CSDL
 
 /** @var PDO $conn */
 
+// Tự động thêm các cột điểm danh vào bảng su_kien nếu chưa tồn tại
+try {
+    $conn->exec("ALTER TABLE su_kien ADD COLUMN IF NOT EXISTS is_attendance_open INT DEFAULT 0");
+    $conn->exec("ALTER TABLE su_kien ADD COLUMN IF NOT EXISTS passcode VARCHAR(10) DEFAULT NULL");
+    $conn->exec("ALTER TABLE su_kien ADD COLUMN IF NOT EXISTS passcode_expired_at DATETIME DEFAULT NULL");
+} catch (PDOException $e) {
+    // Bỏ qua nếu cột đã có sẵn
+}
+
 // Lấy thông tin tài khoản Admin đang đăng nhập từ Session
 $admin_ho_ten = $_SESSION['ho_ten'] ?? 'Admin';
 $admin_ma_sv  = $_SESSION['ma_sv'] ?? '';
+
+// Xử lý Mở / Đóng điểm danh trực tiếp tại Dashboard (Tránh lỗi 404)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['open', 'close'])) {
+    $eventId = $_POST['event_id'] ?? '';
+    $action = $_POST['action'];
+    
+    if ($eventId !== '') {
+        try {
+            if ($action === 'open') {
+                $passcode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+                $expiredAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+                $stmt_update = $conn->prepare("UPDATE su_kien SET is_attendance_open = 1, passcode = ?, passcode_expired_at = ? WHERE ma_sukien = ?");
+                $stmt_update->execute([$passcode, $expiredAt, $eventId]);
+            } else {
+                $stmt_update = $conn->prepare("UPDATE su_kien SET is_attendance_open = 0, passcode = NULL, passcode_expired_at = NULL WHERE ma_sukien = ?");
+                $stmt_update->execute([$eventId]);
+            }
+            header("Location: dashboard.php");
+            exit();
+        } catch (PDOException $e) {
+            echo "<script>alert('Lỗi CSDL: " . addslashes($e->getMessage()) . "');</script>";
+        }
+    }
+}
 
 // 1. Xử lý khi Admin bấm Duyệt hoặc Từ chối yêu cầu phân quyền của sinh viên
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_admin'])) {
@@ -19,12 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_admin'])) {
 
     if ($target_user_id) {
         if ($admin_action === 'approve') {
-            // Duyệt: Nâng cấp vai trò thành quan_ly_su_kien và cập nhật trạng thái
             $stmt_approve = $conn->prepare("UPDATE users SET vai_tro = 'quan_ly_su_kien', yeu_cau_phan_quyen = 'approved' WHERE id = ?");
             $stmt_approve->execute([$target_user_id]);
         } elseif ($admin_action === 'reject') {
-            // Từ chối: Cập nhật trạng thái thành rejected
-            $stmt_reject = $conn->prepare("UPDATE users SET yeu_cau_phan_quyen = 'rejected' WHERE id = ?");
+            $stmt_reject = $conn->prepare("UPDATE users SET vai_tro = 'rejected', yeu_cau_phan_quyen = 'rejected' WHERE id = ?");
             $stmt_reject->execute([$target_user_id]);
         }
     }
@@ -34,20 +65,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_admin'])) {
 $stmt_pending = $conn->query("SELECT * FROM users WHERE yeu_cau_phan_quyen = 'pending'");
 $pending_requests = $stmt_pending->fetchAll();
 
-// 3. Lựa chọn lớp học theo bộ lọc (mặc định '242101TH001')
+// 3. Lấy danh sách sự kiện phục vụ quản lý điểm danh (Sắp xếp tăng dần từ 1 đến 6 theo ma_sukien)
+try {
+    $stmt_events = $conn->query("SELECT * FROM su_kien ORDER BY ma_sukien ASC");
+    $events_list = $stmt_events->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $events_list = [];
+}
+
+// 4. Lựa chọn lớp học theo bộ lọc (mặc định '242101TH001')
 $selected_class = $_GET['ma_lop'] ?? '242101TH001';
 
-// 4. Truy vấn lấy tổng số sinh viên thuộc lớp được chọn
+// 5. Truy vấn lấy tổng số sinh viên thuộc lớp được chọn
 $stmt_count = $conn->prepare("SELECT COUNT(*) as total FROM users WHERE ma_lop = ? AND (vai_tro = 'sinh_vien' OR vai_tro IS NULL OR vai_tro = '')");
 $stmt_count->execute([$selected_class]);
 $total_students = $stmt_count->fetch()['total'] ?? 0;
 
-// 5. Truy vấn danh sách và số lượng tất cả Nhân viên / Quản lý sự kiện
+// 6. Truy vấn danh sách và số lượng tất cả Nhân viên / Quản lý sự kiện
 $stmt_staff_list = $conn->query("SELECT ma_sv, ho_ten, email, sdt, chuc_vu_mong_muon FROM users WHERE vai_tro = 'quan_ly_su_kien' ORDER BY ma_sv ASC");
 $staff_members = $stmt_staff_list->fetchAll();
 $total_staff = count($staff_members);
 
-// 6. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
+// 7. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
 $first_day_of_month = date('Y-m-01 00:00:00');
 $last_day_of_month  = date('Y-m-t 23:59:59');
 
@@ -56,15 +95,15 @@ $sql_students = "
         (
             SELECT COUNT(DISTINCT dk.su_kien_id)
             FROM dang_ky_su_kien dk
-            JOIN su_kien sk ON dk.su_kien_id = sk.id
+            JOIN su_kien sk ON dk.su_kien_id = sk.ma_sukien
             WHERE dk.user_id = u.id
               AND dk.trang_thai = 'da_tham_gia'
-              AND sk.ngay_to_chuc BETWEEN :first_day AND :last_day
+              AND sk.thoi_gian_bat_dau BETWEEN :first_day AND :last_day
         ) AS so_su_kien_thang,
         (
             SELECT COALESCE(SUM(sk.diem_ren_luyen), 0)
             FROM dang_ky_su_kien dk
-            JOIN su_kien sk ON dk.su_kien_id = sk.id
+            JOIN su_kien sk ON dk.su_kien_id = sk.ma_sukien
             WHERE dk.user_id = u.id
               AND dk.trang_thai = 'da_tham_gia'
         ) AS tong_diem_ren_luyen
@@ -86,7 +125,7 @@ try {
     $students = $stmt_students->fetchAll();
 }
 
-// 7. Lấy danh sách tất cả các lớp học có trong hệ thống để đổ vào menu thả xuống
+// 8. Lấy danh sách tất cả các lớp học có trong hệ thống để đổ vào menu thả xuống
 $stmt_classes = $conn->query("SELECT DISTINCT ma_lop FROM users WHERE ma_lop IS NOT NULL AND ma_lop != '' ORDER BY ma_lop ASC");
 $classes = $stmt_classes->fetchAll();
 ?>
@@ -95,7 +134,10 @@ $classes = $stmt_classes->fetchAll();
 <head>
     <meta charset="UTF-8">
     <title>Admin Dashboard - Quản lý Lớp & Phân Quyền</title>
-    <!-- Liên kết đường dẫn CSS chuẩn -->
+    <!-- Thêm Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Liên kết đường dẫn CSS chuẩn hiện tại -->
     <link rel="stylesheet" href="../css/dashboard.css">
 </head>
 <body>
@@ -154,6 +196,84 @@ $classes = $stmt_classes->fetchAll();
                 </table>
             </div>
         <?php endif; ?>
+
+        <!-- ================================================================= -->
+        <!-- 🛡️ QUẢN LÝ ĐIỂM DANH SỰ KIỆN (MÃ PASSCODE 5 PHÚT) - ĐẶT LÊN TRÊN -->
+        <!-- ================================================================= -->
+        <div class="card text-white border-0 shadow-lg p-4 mb-4 rounded-4" style="background-color: #34495e !important; border: 1px solid #2c3e50 !important;">
+            <h4 class="text-success mb-3 fw-bold">
+                <i class="bi bi-shield-lock-fill me-2"></i> Quản lý Điểm Danh Sự Kiện (Mã Passcode 5 phút)
+            </h4>
+            
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle text-center border-secondary mb-0" style="background-color: #212529; border-radius: 8px; overflow: hidden;">
+                    <thead>
+                        <tr class="table-secondary text-dark fw-bold">
+                            <th style="width: 5%;">ID</th>
+                            <th style="width: 30%; text-align: left; padding-left: 15px;">Tên sự kiện</th>
+                            <th style="width: 15%;">Trạng thái điểm danh</th>
+                            <th style="width: 15%;">Mã Passcode hiện tại</th>
+                            <th style="width: 20%;">Hành động mở/đóng</th>
+                            <th style="width: 15%;">Thống kê</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-white">
+                        <?php if (count($events_list) > 0): ?>
+                            <?php foreach ($events_list as $ev): ?>
+                                <?php 
+                                    $evId = $ev['ma_sukien'] ?? 0; // Khớp cột khóa chính ma_sukien
+                                    $eventTitle = $ev['ten_sukien'] ?? 'Sự kiện chưa có tên'; 
+                                    $isOpen = isset($ev['is_attendance_open']) && $ev['is_attendance_open'] == 1;
+                                    $passcode = $isOpen ? ($ev['passcode'] ?? '------') : '------';
+                                ?>
+                                <tr>
+                                    <td class="fw-bold text-white"><?php echo htmlspecialchars($evId); ?></td>
+                                    <td style="text-align: left; padding-left: 15px;" class="fw-semibold text-info">
+                                        <?php echo htmlspecialchars($eventTitle); ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($isOpen): ?>
+                                            <span class="badge bg-success px-3 py-2">Đang mở</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary px-3 py-2">Đã đóng</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="font-monospace fs-5 text-warning fw-bold" style="letter-spacing: 3px;">
+                                            <?php echo htmlspecialchars($passcode); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <!-- action="" để gửi dữ liệu xử lý trực tiếp tại trang dashboard.php -->
+                                        <form action="" method="POST" class="d-inline">
+                                            <input type="hidden" name="event_id" value="<?php echo htmlspecialchars($evId); ?>">
+                                            <?php if ($isOpen): ?>
+                                                <button type="submit" name="action" value="close" class="btn btn-danger btn-sm fw-bold px-3">
+                                                    <i class="bi bi-lock-fill me-1"></i> Đóng
+                                                </button>
+                                            <?php else: ?>
+                                                <button type="submit" name="action" value="open" class="btn btn-warning btn-sm text-dark fw-bold px-3">
+                                                    <i class="bi bi-key-fill me-1"></i> Mở (5 phút)
+                                                </button>
+                                            <?php endif; ?>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <a href="chi_tiet_diem_danh.php?id=<?php echo htmlspecialchars($evId); ?>" class="btn btn-info btn-sm text-dark fw-bold px-3">
+                                            <i class="bi bi-people-fill me-1"></i> Xem danh sách
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" class="text-white-50 py-3">Chưa có sự kiện nào trong hệ thống.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         <!-- BỘ LỌC CHỌN LỚP HỌC -->
         <div class="filter-form">

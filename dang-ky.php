@@ -6,11 +6,12 @@ require_once 'database.php';
 // ==============================================================================
 // 1. API TRẢ VỀ SƠ ĐỒ GHẾ NGỒI
 // ==============================================================================
-if (isset($_GET['action']) &&$_GET['action'] == 'get_seats') {
+if (isset($_GET['action']) && $_GET['action'] == 'get_seats') {
     header('Content-Type: application/json');
     $su_kien_id = isset($_GET['su_kien_id']) ? intval($_GET['su_kien_id']) : 0;
     
-    if ($su_kien_id > 0) {$sql_seats = "
+    if ($su_kien_id > 0) {
+        $sql_seats = "
             SELECT g.id, g.hang, g.so_ghe, g.loai_ghe,
                    IF(dg.id IS NULL, 0, 1) as is_booked
             FROM ghe g
@@ -19,7 +20,7 @@ if (isset($_GET['action']) &&$_GET['action'] == 'get_seats') {
             ORDER BY g.hang, g.so_ghe
         ";
         $stmt_seats = $conn->prepare($sql_seats);
-        $stmt_seats->execute([':su_kien_id' =>$su_kien_id]);
+        $stmt_seats->execute([':su_kien_id' => $su_kien_id]);
         echo json_encode($stmt_seats->fetchAll(PDO::FETCH_ASSOC));
     } else {
         echo json_encode([]);
@@ -33,68 +34,72 @@ if (isset($_GET['action']) &&$_GET['action'] == 'get_seats') {
 $message = "";
 $message_type = "";
 
-// Lấy thông tin tài khoản đang đăng nhập
-$ho_ten_hien_tai  = $_SESSION['ho_ten'] ?? '';$mssv_hien_tai    = $_SESSION['ma_sv'] ?? '';$user_id_hien_tai = $_SESSION['user_id'] ?? $_SESSION['id'] ?? 4; 
-$email_hien_tai   =$_SESSION['email'] ?? '';
+// Lấy thông tin tài khoản đang đăng nhập[cite: 12]
+$ho_ten_hien_tai  = $_SESSION['ho_ten'] ?? '';
+$mssv_hien_tai    = $_SESSION['ma_sv'] ?? '';
+$user_id_hien_tai = $_SESSION['user_id'] ?? $_SESSION['id'] ?? 4; 
+$email_hien_tai   = $_SESSION['email'] ?? '';
 
-// Tự động kéo Email từ bảng users nếu session chưa lưu
+// Tự động kéo Email từ bảng users nếu session chưa lưu[cite: 12]
 if (empty($email_hien_tai) && !empty($mssv_hien_tai)) {
     try {
-        $stmt_email =$conn->prepare("SELECT email FROM users WHERE ma_sv = :mssv LIMIT 1");
-        $stmt_email->execute([':mssv' =>$mssv_hien_tai]);
-        if ($row =$stmt_email->fetch(PDO::FETCH_ASSOC)) {
-            $email_hien_tai =$row['email'];
+        $stmt_email = $conn->prepare("SELECT email FROM users WHERE ma_sv = :mssv LIMIT 1");
+        $stmt_email->execute([':mssv' => $mssv_hien_tai]);
+        if ($row = $stmt_email->fetch(PDO::FETCH_ASSOC)) {
+            $email_hien_tai = $row['email'];
         }
     } catch (PDOException $e) {}
 }
 
-// Khi người dùng bấm nút Xác nhận
+// Khi người dùng bấm nút Xác nhận[cite: 12]
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $ho_ten     = isset($_POST['ho_ten']) ? trim($_POST['ho_ten']) : '';$email      = isset($_POST['email']) ? trim($_POST['email']) : '';
-    $mssv       = isset($_POST['mssv']) ? trim($_POST['mssv']) : '';$su_kien_id = isset($_POST['su_kien_id']) ? intval($_POST['su_kien_id']) : 0;
+    $ho_ten     = isset($_POST['ho_ten']) ? trim($_POST['ho_ten']) : '';
+    $email      = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $mssv       = isset($_POST['mssv']) ? trim($_POST['mssv']) : '';
+    $su_kien_id = isset($_POST['su_kien_id']) ? intval($_POST['su_kien_id']) : 0;
     $ghe_id     = isset($_POST['ghe_id']) ? intval($_POST['ghe_id']) : 0;
 
-    if (!empty($mssv) && $su_kien_id > 0 &&$ghe_id > 0) {
+    if (!empty($mssv) && $su_kien_id > 0 && $ghe_id > 0) {
         try {
             $conn->beginTransaction();
 
-            // 1. Kiểm tra ghế trống xem có ai nhanh tay đặt trước không
-            $check_ghe =$conn->prepare("SELECT id FROM dat_ghe WHERE su_kien_id = ? AND ghe_id = ? AND trang_thai = 'DA_DAT'");
-            $check_ghe->execute([$su_kien_id,$ghe_id]);
+            // 1. Kiểm tra ghế trống xem có ai nhanh tay đặt trước không[cite: 12]
+            $check_ghe = $conn->prepare("SELECT id FROM dat_ghe WHERE su_kien_id = ? AND ghe_id = ? AND trang_thai = 'DA_DAT'");
+            $check_ghe->execute([$su_kien_id, $ghe_id]);
             if ($check_ghe->rowCount() > 0) {
                 throw new Exception("Rất tiếc, ghế này vừa bị người khác đặt mất. Vui lòng chọn ghế khác!");
             }
 
-            // 2. Xử lý thông tin sinh viên mới nếu chưa có trong DB
-            $stmt_check =$conn->prepare("SELECT ma_sv FROM sinh_vien WHERE ma_sv = :mssv");
-            $stmt_check->execute([':mssv' =>$mssv]);
+            // 2. Xử lý thông tin sinh viên mới nếu chưa có trong DB[cite: 12]
+            $stmt_check = $conn->prepare("SELECT ma_sv FROM sinh_vien WHERE ma_sv = :mssv");
+            $stmt_check->execute([':mssv' => $mssv]);
             if ($stmt_check->rowCount() == 0) {
-                $stmt_add =$conn->prepare("INSERT INTO sinh_vien (ma_sv, ho_ten, email, mat_khau) VALUES (:mssv, :ho_ten, :email, '123456')");
-                $stmt_add->execute([':mssv' =>$mssv, ':ho_ten' => $ho_ten, ':email' =>$email]);
+                $stmt_add = $conn->prepare("INSERT INTO sinh_vien (ma_sv, ho_ten, email, mat_khau) VALUES (:mssv, :ho_ten, :email, '123456')");
+                $stmt_add->execute([':mssv' => $mssv, ':ho_ten' => $ho_ten, ':email' => $email]);
             }
 
-            // 3. Xử lý lưu đăng ký sự kiện (Cho phép đăng ký lại nếu trước đó Đã hủy)
-            $stmt_check_dk =$conn->prepare("SELECT trang_thai FROM dang_ky WHERE ma_sv = :mssv AND ma_sukien = :su_kien_id");
-            $stmt_check_dk->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
-            $dk_exist =$stmt_check_dk->fetch(PDO::FETCH_ASSOC);
+            // 3. Xử lý lưu đăng ký sự kiện theo đúng cấu trúc bảng dang_ky[cite: 11, 12]
+            $stmt_check_dk = $conn->prepare("SELECT trang_thai FROM dang_ky WHERE user_id = :user_id AND su_kien_id = :su_kien_id");
+            $stmt_check_dk->execute([':user_id' => $user_id_hien_tai, ':su_kien_id' => $su_kien_id]);
+            $dk_exist = $stmt_check_dk->fetch(PDO::FETCH_ASSOC);
 
             if ($dk_exist) {
                 if ($dk_exist['trang_thai'] == 'Đã hủy') {
-                    // Nếu đã hủy -> Cập nhật lại thành Đã đăng ký và làm mới thời gian
-                    $stmt_update_dk =$conn->prepare("UPDATE dang_ky SET trang_thai = 'Đã đăng ký', thoi_gian_dang_ky = current_timestamp() WHERE ma_sv = :mssv AND ma_sukien = :su_kien_id");
-                    $stmt_update_dk->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+                    // Nếu đã hủy -> Cập nhật lại thành Đã đăng ký[cite: 12]
+                    $stmt_update_dk = $conn->prepare("UPDATE dang_ky SET trang_thai = 'Đã đăng ký' WHERE user_id = :user_id AND su_kien_id = :su_kien_id");
+                    $stmt_update_dk->execute([':user_id' => $user_id_hien_tai, ':su_kien_id' => $su_kien_id]);
                 } else {
-                    // Nếu đang ở trạng thái 'Đã đăng ký' thì chặn lại
+                    // Nếu đang ở trạng thái 'Đã đăng ký' thì chặn lại[cite: 12]
                     throw new Exception("Bạn đã đăng ký tham gia sự kiện này rồi!");
                 }
             } else {
-                // Nếu chưa từng đăng ký -> Thêm mới
-                $stmt_insert =$conn->prepare("INSERT INTO dang_ky (ma_sv, ma_sukien, trang_thai) VALUES (:mssv, :su_kien_id, 'Đã đăng ký')");
-                $stmt_insert->execute([':mssv' => $mssv, ':su_kien_id' =>$su_kien_id]);
+                // Nếu chưa từng đăng ký -> Thêm mới[cite: 11, 12]
+                $stmt_insert = $conn->prepare("INSERT INTO dang_ky (user_id, su_kien_id, trang_thai) VALUES (:user_id, :su_kien_id, 'Đã đăng ký')");
+                $stmt_insert->execute([':user_id' => $user_id_hien_tai, ':su_kien_id' => $su_kien_id]);
             }
 
-            // 4. Chốt ghế ngồi (Dùng ON DUPLICATE KEY để ghi đè lên các ghế cũ bị hủy)
-            $stmt_dat =$conn->prepare("
+            // 4. Chốt ghế ngồi (Dùng ON DUPLICATE KEY để ghi đè lên các ghế cũ bị hủy)[cite: 12]
+            $stmt_dat = $conn->prepare("
                 INSERT INTO dat_ghe (su_kien_id, ghe_id, user_id, trang_thai, ngay_dat) 
                 VALUES (:su_kien_id, :ghe_id, :user_id, 'DA_DAT', current_timestamp())
                 ON DUPLICATE KEY UPDATE user_id = :user_id2, trang_thai = 'DA_DAT', ngay_dat = current_timestamp()
@@ -105,12 +110,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ':user_id'    => $user_id_hien_tai,
                 ':user_id2'   => $user_id_hien_tai
             ]);
-
-            $conn->commit();$message = "Đăng ký thành công! Chỗ ngồi của bạn đã được xác nhận.";
+$conn->commit();
+            $message = "Đăng ký thành công! Chỗ ngồi của bạn đã được xác nhận.";
             $message_type = "success";
 
         } catch (Exception $e) {
-            $conn->rollBack();$message = $e->getMessage();$message_type = "warning";
+            $conn->rollBack();
+            $message = $e->getMessage();
+            $message_type = "warning";
         }
     } else {
         $message = "Vui lòng điền đầy đủ thông tin và chọn vị trí ghế ngồi!";
@@ -229,10 +236,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <option value="" class="text-white">-- Click để chọn sự kiện --</option>
                         <?php
                         try {
-                            // CẬP NHẬT: Thêm điều kiện thoi_gian_bat_dau >= NOW() để ẩn sự kiện quá hạn
-                            $stmt_sk =$conn->query("SELECT ma_sukien, ten_sukien FROM su_kien WHERE thoi_gian_bat_dau >= NOW() ORDER BY thoi_gian_bat_dau ASC");
+                            $stmt_sk = $conn->query("SELECT ma_sukien, ten_sukien FROM su_kien WHERE thoi_gian_bat_dau >= NOW() ORDER BY thoi_gian_bat_dau ASC");
                             $selected_id = isset($_GET['event_id']) ? intval($_GET['event_id']) : 0;
-                            while ($row = $stmt_sk->fetch(PDO::FETCH_ASSOC)) {$selected = ($row['ma_sukien'] ==$selected_id) ? 'selected' : '';
+                            while ($row = $stmt_sk->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($row['ma_sukien'] == $selected_id) ? 'selected' : '';
                                 echo '<option class="text-dark" value="' . $row['ma_sukien'] . '" ' . $selected . '>' . htmlspecialchars($row['ten_sukien']) . '</option>';
                             }
                         } catch (Exception $e) {}
