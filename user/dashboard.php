@@ -12,8 +12,49 @@ $message = "";
 $error = "";
 
 $ma_sv = $_SESSION['ma_sv'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
-// 1. Xử lý khi người dùng gửi yêu cầu nâng cấp quyền kèm lý do & chức vụ
+// 1. Xử lý sinh viên xác nhận nhập Passcode điểm danh trực tiếp tại trang
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_attendance') {
+    $eventId = $_POST['event_id'] ?? '';
+    $passcode = trim($_POST['passcode'] ?? '');
+    
+    if ($eventId && $passcode) {
+        try {
+            // Kiểm tra sự kiện có đang mở và đúng mã passcode còn hạn không
+            $stmt_ev = $conn->prepare("SELECT * FROM su_kien WHERE ma_sukien = ? AND is_attendance_open = 1 AND passcode = ?");
+            $stmt_ev->execute([$eventId, $passcode]);
+            $event_check = $stmt_ev->fetch();
+            
+            if ($event_check) {
+                // Kiểm tra xem sinh viên đã có bản ghi đăng ký/tham gia sự kiện này chưa
+                $stmt_check_reg = $conn->prepare("SELECT id FROM dang_ky_su_kien WHERE user_id = ? AND su_kien_id = ?");
+                $stmt_check_reg->execute([$user_id, $eventId]);
+                $reg = $stmt_check_reg->fetch();
+                
+                if ($reg) {
+                    $stmt_up = $conn->prepare("UPDATE dang_ky_su_kien SET trang_thai = 'da_tham_gia' WHERE user_id = ? AND su_kien_id = ?");
+                    $stmt_up->execute([$user_id, $eventId]);
+                } else {
+                    // Đã loại bỏ cột ngay_dang_ky để tránh lỗi CSDL
+                    $stmt_ins = $conn->prepare("INSERT INTO dang_ky_su_kien (user_id, su_kien_id, trang_thai) VALUES (?, ?, 'da_tham_gia')");
+                    $stmt_ins->execute([$user_id, $eventId]);
+                }
+                
+                echo "<script>alert('🎉 Điểm danh thành công!'); window.location.href='dashboard.php';</script>";
+                exit();
+            } else {
+                $error = "Mã Passcode không chính xác hoặc phiên điểm danh đã đóng!";
+            }
+        } catch (PDOException $e) {
+            $error = "Lỗi CSDL: " . $e->getMessage();
+        }
+    } else {
+        $error = "Vui lòng nhập đầy đủ mã Passcode!";
+    }
+}
+
+// 2. Xử lý khi người dùng gửi yêu cầu nâng cấp quyền kèm lý do & chức vụ
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_upgrade') {
     $chuc_vu = trim($_POST['chuc_vu_mong_muon'] ?? '');
     $ly_do = trim($_POST['ly_do_nang_cap'] ?? '');
@@ -37,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// 2. Truy vấn lại thông tin người dùng mới nhất từ CSDL
+// 3. Truy vấn lại thông tin người dùng mới nhất từ CSDL
 $stmt = $conn->prepare("SELECT * FROM users WHERE ma_sv = ?");
 $stmt->execute([$ma_sv]);
 $user = $stmt->fetch();
@@ -47,15 +88,32 @@ $yeu_cau = $user['yeu_cau_phan_quyen'] ?? 'none';
 $chuc_vu_cu = $user['chuc_vu_mong_muon'] ?? '';
 $ly_do_cu = $user['ly_do_nang_cap'] ?? '';
 
-// Kiểm tra xem có thông báo mới từ Admin hay không (approved hoặc rejected)
 $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
+
+// 4. Kiểm tra sự kiện đang mở điểm danh cho sinh viên
+$active_event = null;
+if ($user_id && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
+    $stmt_active = $conn->prepare("
+        SELECT * FROM su_kien 
+        WHERE is_attendance_open = 1 
+        AND ma_sukien NOT IN (
+            SELECT su_kien_id FROM dang_ky_su_kien 
+            WHERE user_id = ? AND trang_thai = 'da_tham_gia'
+        )
+        LIMIT 1
+    ");
+    $stmt_active->execute([$user_id]);
+    $active_event = $stmt_active->fetch(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <title>Dashboard - <?php echo htmlspecialchars($user['ho_ten'] ?? ''); ?></title>
-    <!-- Đường dẫn CSS chuẩn lùi 1 cấp thư mục về css/user-dashboard.css -->
+    <!-- Thêm Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" type="text/css" href="../css/user-dashboard.css?v=<?php echo time(); ?>">
 </head>
 <body>
@@ -63,7 +121,6 @@ $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
         <div class="header">
             <h2>👋 Chào mừng, <?php echo htmlspecialchars($user['ho_ten'] ?? ''); ?></h2>
             <div class="header-nav">
-                <!-- 🔔 CHUÔNG THÔNG BÁO -->
                 <a href="#role-section" class="notification-bell" title="Thông báo hệ thống">
                     🔔 Thông báo
                     <?php if ($has_notification): ?>
@@ -75,6 +132,11 @@ $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
                 <a href="logout.php" class="btn-logout">Đăng xuất</a>
             </div>
         </div>
+
+        <!-- Hiển thị lỗi nếu có khi điểm danh -->
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger mt-3"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
 
         <h3>👤 Thông tin tài khoản</h3>
         <div class="info-grid">
@@ -99,11 +161,6 @@ $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
                 <div class="alert-success"><?php echo htmlspecialchars($message); ?></div>
             <?php endif; ?>
 
-            <?php if (!empty($error)): ?>
-                <div class="alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-
-            <!-- Thông báo phản hồi từ Admin -->
             <?php if ($yeu_cau === 'approved'): ?>
                 <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                     <p style="color: #155724; font-weight: bold; margin: 0;">🎉 Chúc mừng! Yêu cầu của bạn đã được Admin phê duyệt.</p>
@@ -156,7 +213,6 @@ $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
                     </form>
                 <?php endif; ?>
             <?php else: ?>
-                <!-- Đã có quyền quản lý sự kiện hoặc admin -->
                 <p style="color: #198754; font-weight: bold; margin-bottom: 10px;">
                     ✅ Tài khoản của bạn đã có quyền quản lý sự kiện!
                 </p>
@@ -166,5 +222,46 @@ $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- ================================================================= -->
+    <!-- 🛡️ MODAL TỰ ĐỘNG BẬT NHẬP MÃ PASSCODE ĐIỂM DANH -->
+    <!-- ================================================================= -->
+    <?php if ($active_event): ?>
+    <div class="modal fade" id="autoAttendanceModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-success shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-success fw-bold">
+                        <i class="bi bi-shield-lock-fill me-2"></i> Điểm Danh Sự Kiện Đang Mở!
+                    </h5>
+                </div>
+                <form action="" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="confirm_attendance">
+                        <input type="hidden" name="event_id" value="<?php echo htmlspecialchars($active_event['ma_sukien']); ?>">
+                        
+                        <p class="mb-2">Sự kiện: <strong class="text-info"><?php echo htmlspecialchars($active_event['ten_sukien']); ?></strong> đang diễn ra.</p>
+                        <p class="text-muted small mb-3">Vui lòng nhập mã Passcode 6 chữ số do Ban tổ chức / Admin cung cấp để xác nhận điểm danh.</p>
+                        
+                        <div class="mb-3 text-center">
+                            <input type="text" name="passcode" class="form-control form-control-lg text-center fw-bold fs-3 text-warning bg-secondary text-white border-0" placeholder="------" maxlength="6" required autocomplete="off" style="letter-spacing: 5px;">
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary justify-content-center">
+                        <button type="submit" class="btn btn-success px-5 fw-bold">Xác Nhận Điểm Danh</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var myModal = new bootstrap.Modal(document.getElementById('autoAttendanceModal'));
+            myModal.show();
+        });
+    </script>
+    <?php endif; ?>
 </body>
 </html>
