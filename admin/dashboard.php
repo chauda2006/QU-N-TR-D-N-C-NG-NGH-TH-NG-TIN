@@ -87,28 +87,24 @@ $staff_members = $stmt_staff_list->fetchAll();
 $total_staff = count($staff_members);
 
 // 7. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
+// 7. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
 $first_day_of_month = date('Y-m-01 00:00:00');
 $last_day_of_month  = date('Y-m-t 23:59:59');
 
 $sql_students = "
     SELECT u.*,
+        COALESCE(u.diem_ren_luyen, 0) AS tong_diem_ren_luyen,
         (
             SELECT COUNT(DISTINCT dk.su_kien_id)
             FROM dang_ky_su_kien dk
             JOIN su_kien sk ON dk.su_kien_id = sk.ma_sukien
             WHERE dk.user_id = u.id
-              AND dk.trang_thai = 'da_tham_gia'
+              AND (dk.trang_thai = 'da_tham_gia' OR dk.trang_thai = 'present')
               AND sk.thoi_gian_bat_dau BETWEEN :first_day AND :last_day
-        ) AS so_su_kien_thang,
-        (
-            SELECT COALESCE(SUM(sk.diem_ren_luyen), 0)
-            FROM dang_ky_su_kien dk
-            JOIN su_kien sk ON dk.su_kien_id = sk.ma_sukien
-            WHERE dk.user_id = u.id
-              AND dk.trang_thai = 'da_tham_gia'
-        ) AS tong_diem_ren_luyen
+        ) AS so_su_kien_thang
     FROM users u
     WHERE u.ma_lop = :ma_lop AND (u.vai_tro = 'sinh_vien' OR u.vai_tro IS NULL OR u.vai_tro = '')
+    ORDER BY u.ma_sv ASC
 ";
 
 try {
@@ -118,11 +114,11 @@ try {
         ':last_day'  => $last_day_of_month,
         ':ma_lop'    => $selected_class
     ]);
-    $students = $stmt_students->fetchAll();
+    $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    $stmt_students = $conn->prepare("SELECT *, 0 AS so_su_kien_thang, 0 AS tong_diem_ren_luyen FROM users WHERE ma_lop = ? AND (vai_tro = 'sinh_vien' OR vai_tro IS NULL OR vai_tro = '')");
+    $stmt_students = $conn->prepare("SELECT *, 0 AS so_su_kien_thang, COALESCE(diem_ren_luyen, 0) AS tong_diem_ren_luyen FROM users WHERE ma_lop = ? AND (vai_tro = 'sinh_vien' OR vai_tro IS NULL OR vai_tro = '') ORDER BY ma_sv ASC");
     $stmt_students->execute([$selected_class]);
-    $students = $stmt_students->fetchAll();
+    $students = $stmt_students->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // 8. Lấy danh sách tất cả các lớp học có trong hệ thống để đổ vào menu thả xuống
@@ -341,24 +337,32 @@ $classes = $stmt_classes->fetchAll();
                 </tr>
             </thead>
             <tbody>
-                <?php if (count($students) > 0): ?>
-                    <?php $i = 1; foreach ($students as $stu): ?>
-                        <tr>
-                            <td><?php echo $i++; ?></td>
-                            <td><?php echo htmlspecialchars($stu['ma_sv']); ?></td>
-                            <td><?php echo htmlspecialchars($stu['ho_ten']); ?></td>
-                            <td><?php echo htmlspecialchars($stu['email'] ?? 'Chưa cập nhật'); ?></td>
-                            <td><span class="badge-event"><?php echo (int)($stu['so_su_kien_thang'] ?? 0); ?> sự kiện</span></td>
-                            <td><span class="badge-score">+<?php echo (int)($stu['tong_diem_ren_luyen'] ?? 0); ?> điểm</span></td>
-                            <td><?php echo htmlspecialchars($stu['trang_thai'] ?? 'Đang học'); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #777;">Không có sinh viên nào trong lớp này.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
+    <?php if (count($students) > 0): ?>
+        <?php foreach ($students as $index => $sv): ?>
+            <tr>
+                <td><?php echo $index + 1; ?></td>
+                <td><?php echo htmlspecialchars($sv['ma_sv']); ?></td>
+                <td><?php echo htmlspecialchars($sv['ho_ten']); ?></td>
+                <td><?php echo htmlspecialchars($sv['email']); ?></td>
+                <td>
+                    <span class="badge bg-info text-dark rounded-pill fw-bold">
+                        <?php echo $sv['so_su_kien_thang']; ?> sự kiện
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-warning text-dark rounded-pill fw-bold">
+                        +<?php echo $sv['tong_diem_ren_luyen']; ?> điểm
+                    </span>
+                </td>
+                <td><?php echo htmlspecialchars($sv['trang_thai']); ?></td>
+            </tr>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <tr>
+            <td colspan="7" class="text-center py-3">Không có sinh viên nào trong lớp này.</td>
+        </tr>
+    <?php endif; ?>
+</tbody>
         </table>
     </div>
 </body>

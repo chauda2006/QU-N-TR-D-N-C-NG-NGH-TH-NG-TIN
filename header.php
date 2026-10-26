@@ -20,24 +20,16 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <ul>
                     <!-- Tự động thêm class active nếu đang ở file tương ứng -->
                     <li>
-                        <a href="index.php" class="<?= ($current_page == 'index.php') ? 'active' : ''; ?>">
-                            Trang Chủ
-                        </a>
+                        <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/index.php">Trang chủ</a>
                     </li>
                     <li>
-                        <a href="su-kien.php" class="<?= ($current_page == 'su-kien.php') ? 'active' : ''; ?>">
-                            Sự Kiện
-                        </a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/su-kien.php">Sự kiện</a>
                     </li>
                     <li>
-                        <a href="lich-su.php" class="<?= ($current_page == 'lich-su.php') ? 'active' : ''; ?>">
-                            Lịch Sử
-                        </a>
+                       <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/lich-su.php">Lịch sử</a>
                     </li>
                     <li>
-                        <a href="dang-ky.php" class="<?= ($current_page == 'dang-ky.php') ? 'active' : ''; ?>">
-                            Đăng ký
-                        </a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/dang-ky.php">Đăng ký</a>
                     </li>
                 </ul>
             </nav>
