@@ -430,3 +430,4 @@ events.forEach(function (event) {
 
             eventList.appendChild(card);
         });
+        

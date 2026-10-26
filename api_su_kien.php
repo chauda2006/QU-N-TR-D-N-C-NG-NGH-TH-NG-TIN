@@ -24,11 +24,16 @@ switch ($method) {
     case 'GET':
         if (isset($_GET['ma_sukien']) || isset($_GET['id'])) {
             $id_val = $_GET['ma_sukien'] ?? $_GET['id'];
-            $query = "SELECT * FROM su_kien WHERE ma_sukien = :id OR id = :id LIMIT 1";
+            
+            // LẤY CHI TIẾT 1 SỰ KIỆN KÈM LEFT JOIN ĐỊA ĐIỂM
+            $query = "SELECT sk.*, dd.ten_diadiem, dd.vi_tri, dd.suc_chua as suc_chua_diadiem 
+                      FROM su_kien sk 
+                      LEFT JOIN dia_diem dd ON sk.ma_diadiem = dd.ma_diadiem 
+                      WHERE sk.ma_sukien = :id OR sk.id = :id LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(':id', $id_val);
             $stmt->execute();
-            
+
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($data) {
                 $ten_anh = '';
@@ -36,15 +41,19 @@ switch ($method) {
                 elseif (!empty($data['hinh_anh'])) $ten_anh = $data['hinh_anh'];
                 elseif (!empty($data['anh'])) $ten_anh = $data['anh'];
                 elseif (!empty($data['file_name'])) $ten_anh = $data['file_name'];
-                
-                $data['anh_hien_thi'] = trim($ten_anh);
+
+                $data['anh_hien_thị'] = trim($ten_anh);
                 echo json_encode($data);
             } else {
                 http_response_code(404);
                 echo json_encode(["status" => "error", "message" => "Không tìm thấy sự kiện."]);
             }
         } else {
-            $query = "SELECT * FROM su_kien ORDER BY thoi_gian_bat_dau DESC";
+            // LẤY DANH SÁCH TẤT CẢ SỰ KIỆN KÈM LEFT JOIN ĐỊA ĐIỂM
+            $query = "SELECT sk.*, dd.ten_diadiem, dd.vi_tri, dd.suc_chua as suc_chua_diadiem 
+                      FROM su_kien sk 
+                      LEFT JOIN dia_diem dd ON sk.ma_diadiem = dd.ma_diadiem 
+                      ORDER BY sk.thoi_gian_bat_dau DESC";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -55,9 +64,10 @@ switch ($method) {
                 elseif (!empty($row['hinh_anh'])) $ten_anh = $row['hinh_anh'];
                 elseif (!empty($row['anh'])) $ten_anh = $row['anh'];
                 elseif (!empty($row['file_name'])) $ten_anh = $row['file_name'];
-                
-                $row['anh_hien_thi'] = trim($ten_anh);
+
+                $row['anh_hien_thị'] = trim($ten_anh);
             }
+            unset($row);
 
             echo json_encode($result);
         }
@@ -89,12 +99,12 @@ switch ($method) {
 
                 if (in_array('thoi_gian_bat_dau', $columns)) $insert_data['thoi_gian_bat_dau'] = $data['thoi_gian_bat_dau'] ?? null;
                 if (in_array('thoi_gian_ket_thuc', $columns)) $insert_data['thoi_gian_ket_thuc'] = $data['thoi_gian_ket_thuc'] ?? null;
-                if (in_array('dia_diem', $columns)) $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
+                if (in_array('ma_diadiem', $columns)) $insert_data['ma_diadiem'] = $data['ma_diadiem'] ?? null;
                 if (in_array('vi_tri', $columns)) $insert_data['vi_tri'] = $data['vi_tri'] ?? null;
                 if (in_array('doi_tuong_tham_gia', $columns)) $insert_data['doi_tuong_tham_gia'] = $data['doi_tuong_tham_gia'] ?? null;
                 if (in_array('suc_chua', $columns)) $insert_data['suc_chua'] = $data['suc_chua'] ?? 0;
                 if (in_array('mo_ta', $columns)) $insert_data['mo_ta'] = $data['mo_ta'] ?? null;
-                if (in_array($col_img, $columns) && !empty($data['anh_hien_thi'])) $insert_data[$col_img] = $data['anh_hien_thi'];
+                if (in_array($col_img, $columns) && !empty($data['anh_hien_thị'])) $insert_data[$col_img] = $data['anh_hien_thị'];
 
                 $fields = array_keys($insert_data);
                 $placeholders = array_fill(0, count($fields), '?');
@@ -128,15 +138,14 @@ switch ($method) {
                 $query = "UPDATE su_kien SET 
                             ten_su_kien = :ten_su_kien, 
                             thoi_gian_bat_dau = :thoi_gian_bat_dau, 
-                            dia_diem = :dia_diem, 
+                            ma_diadiem = :ma_diadiem, 
                             mo_ta = :mo_ta 
                           WHERE ma_sukien = :id OR id = :id";
-                
                 $stmt = $db->prepare($query);
                 $stmt->execute([
                     ':ten_su_kien' => $data['ten_su_kien'] ?? '',
                     ':thoi_gian_bat_dau' => $data['thoi_gian_bat_dau'] ?? null,
-                    ':dia_diem' => $data['dia_diem'] ?? '',
+                    ':ma_diadiem' => $data['ma_diadiem'] ?? null,
                     ':mo_ta' => $data['mo_ta'] ?? '',
                     ':id' => $id_val
                 ]);

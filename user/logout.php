@@ -1,10 +1,9 @@
 <?php
 session_start();
-// Hủy toàn bộ session
 session_unset();
 session_destroy();
 
-// Chuyển hướng về trang đăng nhập
-header("Location: login.php");
+// Dùng đường dẫn tương đối chính xác quay về index.php cùng thư mục
+header("Location: ../index.php");
 exit();
 ?>

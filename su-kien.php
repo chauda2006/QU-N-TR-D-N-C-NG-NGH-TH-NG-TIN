@@ -29,9 +29,9 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/header.css">
-    <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" type="text/css" href="./css/nut-su-kien.css?v=<?php echo time(); ?>">
         <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
-
+  <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
 <link rel="stylesheet" href="css/header.css">
     <!-- CSS để biến Video thành Background toàn màn hình -->
 <!-- CSS để biến Video thành Background toàn màn hình -->
@@ -174,6 +174,7 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <!-- Truyền quyền từ PHP sang JavaScript -->
 <script>
     const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
+
 </script>
 
 <!-- Sau đó mới gọi file js -->

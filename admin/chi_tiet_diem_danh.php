@@ -79,18 +79,30 @@ if (isset($_POST['btn_toggle_attendance'])) {
     }
 }
 
-// Lấy danh sách sinh viên đăng ký tham gia sự kiện này
+// Lấy danh sách sinh viên tham gia sự kiện (Hỗ trợ quét đa dạng tên cột khóa ngoại)
 $registrations = [];
 try {
     $stmtReg = $pdo->prepare("
-        SELECT d.*, u.username, u.hoten, u.email 
-        FROM dang_ky d 
-        LEFT JOIN users u ON d.user_id = u.id 
+        SELECT d.*, u.ma_sv, u.ho_ten, u.email 
+        FROM dang_ky_su_kien d
+        LEFT JOIN users u ON (d.user_id = u.id OR d.sinh_vien_id = u.id OR d.user_id = u.ma_sv)
         WHERE d.su_kien_id = ?
     ");
     $stmtReg->execute([$eventId]);
     $registrations = $stmtReg->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {}
+} catch (Exception $ex) {
+    // Dự phòng trường hợp bảng tên là dang_ky
+    try {
+        $stmtReg = $pdo->prepare("
+            SELECT d.*, u.ma_sv, u.ho_ten, u.email 
+            FROM dang_ky d
+            LEFT JOIN users u ON (d.user_id = u.id OR d.sinh_vien_id = u.id OR d.user_id = u.ma_sv)
+            WHERE d.su_kien_id = ?
+        ");
+        $stmtReg->execute([$eventId]);
+        $registrations = $stmtReg->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
