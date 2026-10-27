@@ -34,58 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Xử lý khi sinh viên xác nhận điểm danh sự kiện
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_attendance') {
-    $event_id = $_POST['event_id'] ?? '';
-    $passcode_input = trim($_POST['passcode'] ?? '');
-
-    // Truy vấn thông tin sự kiện bằng ma_sukien
-    $stmt_check = $conn->prepare("SELECT * FROM su_kien WHERE ma_sukien = ? AND is_attendance_open = 1");
-    $stmt_check->execute([$event_id]);
-    $event = $stmt_check->fetch(PDO::FETCH_ASSOC);
-
-    if ($event && trim($event['passcode'] ?? '') === $passcode_input) {
-        $diem_thuong = $event['diem_thuong'] ?? 5; 
-        $target_event_id = $event['ma_sukien'];
-
-        try {
-            $conn->beginTransaction();
-
-            // Kiểm tra xem sinh viên đã có bản ghi trong bảng dang_ky_su_kien chưa
-            $stmt_check_reg = $conn->prepare("SELECT id FROM dang_ky_su_kien WHERE user_id = ? AND su_kien_id = ?");
-            $stmt_check_reg->execute([$user_id, $target_event_id]);
-            $reg_row = $stmt_check_reg->fetch(PDO::FETCH_ASSOC);
-
-            if ($reg_row) {
-                // Đã có -> Cập nhật trạng thái thành da_tham_gia
-                $stmt_update_dk = $conn->prepare("UPDATE dang_ky_su_kien SET trang_thai = 'da_tham_gia' WHERE user_id = ? AND su_kien_id = ?");
-                $stmt_update_dk->execute([$user_id, $target_event_id]);
-            } else {
-                // Chưa có -> Thêm mới bản ghi với trạng thái da_tham_gia
-                $stmt_insert_dk = $conn->prepare("INSERT INTO dang_ky_su_kien (user_id, su_kien_id, trang_thai) VALUES (?, ?, 'da_tham_gia')");
-                $stmt_insert_dk->execute([$user_id, $target_event_id]);
-            }
-
-            // Tự động cộng điểm rèn luyện cho sinh viên
-            $stmt_cong_diem = $conn->prepare("UPDATE users SET diem_ren_luyen = diem_ren_luyen + ? WHERE id = ?");
-            $stmt_cong_diem->execute([$diem_thuong, $user_id]);
-
-            $conn->commit();
-            $message = "Điểm danh thành công! Bạn đã được cộng $diem_thuong điểm rèn luyện.";
-            
-            // F5 lại trang để đóng modal vĩnh viễn
-            header("Location: dashboard.php");
-            exit();
-        } catch (Exception $e) {
-            if ($conn->inTransaction()) {
-                $conn->rollBack();
-            }
-            $error = "Lỗi điểm danh: " . $e->getMessage();
-        }
-    } else {
-        $error = "Mã Passcode không chính xác hoặc sự kiện đã đóng!";
-    }
-}
+// LƯU Ý: Phần xử lý confirm_attendance bằng PHP thuần đã được xóa bỏ để sử dụng api_checkin.php bằng AJAX (JS)
 
 // Truy vấn lại thông tin người dùng mới nhất từ CSDL
 $stmt = $conn->prepare("SELECT * FROM users WHERE ma_sv = ?");
@@ -100,7 +49,7 @@ $ly_do_cu = $user['ly_do_nang_cap'] ?? '';
 
 $has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
 
-// Kiểm tra sự kiện đang mở điểm danh (Dùng LEFT JOIN để loại trừ những sự kiện đã điểm danh)
+// Kiểm tra sự kiện đang mở điểm danh 
 $active_event = null;
 if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
     $stmt_active = $conn->prepare("
@@ -124,6 +73,8 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" type="text/css" href="../css/user-dashboard.css?v=<?php echo time(); ?>">
+    <!-- Bổ sung SweetAlert2 để hiện thông báo đẹp mắt -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 <div class="container py-4">
@@ -141,7 +92,6 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
         </div>
     </div>
 
-    <!-- Hiển thị thông báo lỗi hoặc thành công -->
     <?php if (!empty($error)): ?>
         <div class="alert alert-danger mt-3"><?php echo htmlspecialchars($error); ?></div>
     <?php endif; ?>
@@ -168,7 +118,7 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
         </div>
     </div>
 
-    <!-- 🔑 KHU VỰC YÊU CẦU NÂNG CẤP QUYỀN & THÔNG BÁO -->
+    <!-- 🔑 KHU VỰC YÊU CẦU NÂNG CẤP QUYỀN -->
     <div id="role-section" class="role-section card bg-dark text-white p-4 border-secondary shadow-sm">
         <h3>🔒 Đăng ký & Trạng thái Quản lý sự kiện</h3>
 
@@ -249,29 +199,31 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
 
 <!-- 🚀 MODAL TỰ ĐỘNG BẬT MÃ PASSCODE ĐIỂM DANH -->
 <?php if ($active_event): ?>
-<div class="modal fade" id="autoAttendanceModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+<!-- Đã xóa bỏ thuộc tính khóa cứng modal (static/keyboard) để sinh viên có thể thoát bằng cách click ra ngoài -->
+<div class="modal fade" id="autoAttendanceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content bg-dark text-white border-success shadow-lg">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title text-success fw-bold">
-                    <i class="bi bi-shield-lock-fill me-2"></i>Điểm Danh Sự Kiện Đang Mở!
+            <div class="modal-header border-secondary text-center position-relative">
+                <h5 class="modal-title text-success fw-bold w-100">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Điểm Danh Sự Kiện
                 </h5>
+                <!-- Nút tắt (X) ở góc trên bên phải -->
+                <button type="button" class="btn-close btn-close-white position-absolute" style="right: 15px;" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="" method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="confirm_attendance">
-                    <input type="hidden" name="event_id" value="<?php echo htmlspecialchars($active_event['ma_sukien']); ?>">
-                    <p class="mb-2">Sự kiện: <strong class="text-info"><?php echo htmlspecialchars($active_event['ten_sukien'] ?? $active_event['tieu_de']); ?></strong> đang diễn ra.</p>
-                    <p class="text-muted small mb-3">Vui lòng nhập mã Passcode 6 chữ số do Ban tổ chức cung cấp để xác nhận điểm danh và nhận điểm rèn luyện.</p>
-                    
-                    <div class="mb-3 text-center">
-                        <input type="text" name="passcode" class="form-control form-control-lg text-center fw-bold fs-3 text-warning bg-secondary text-white border-0" required maxlength="6" autocomplete="off" placeholder="------">
-                    </div>
+            
+            <div class="modal-body">
+                <input type="hidden" id="event_id" value="<?php echo htmlspecialchars($active_event['ma_sukien']); ?>">
+                <p class="mb-2 text-center">Sự kiện: <strong class="text-info"><?php echo htmlspecialchars($active_event['ten_sukien'] ?? $active_event['tieu_de']); ?></strong> đang diễn ra.</p>
+                <p class="text-muted small mb-3 text-center">Nhập mã Passcode 6 chữ số do Ban tổ chức cung cấp để xác nhận điểm danh.</p>
+                
+                <div class="mb-3 text-center px-4">
+                    <input type="text" id="passcode" class="form-control form-control-lg text-center fw-bold fs-3 text-warning bg-secondary border-0" required maxlength="6" autocomplete="off" placeholder="------" style="letter-spacing: 5px;">
                 </div>
-                <div class="modal-footer border-secondary justify-content-center">
-                    <button type="submit" class="btn btn-success px-5 fw-bold">Xác Nhận Điểm Danh</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer border-secondary justify-content-center">
+                <!-- Chuyển button type="button" để xử lý bằng JS -->
+                <button type="button" class="btn btn-success px-5 fw-bold" id="btnSubmitCheckin">Xác Nhận</button>
+            </div>
         </div>
     </div>
 </div>
@@ -283,6 +235,51 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
     document.addEventListener("DOMContentLoaded", function () {
         var myModal = new bootstrap.Modal(document.getElementById('autoAttendanceModal'));
         myModal.show();
+
+        // Xử lý gửi Passcode thông qua API api_checkin.php thay vì gửi form truyền thống
+        document.getElementById('btnSubmitCheckin').addEventListener('click', function() {
+            var eventId = document.getElementById('event_id').value;
+            var passcode = document.getElementById('passcode').value;
+
+            if (passcode.trim().length === 0) {
+                Swal.fire('Lỗi', 'Vui lòng nhập mã Passcode!', 'error');
+                return;
+            }
+
+            // Gọi API điểm danh
+            fetch('../api_checkin.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_id: eventId,
+                    passcode: passcode
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        title: 'Thành công!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'Tuyệt vời'
+                    }).then(() => {
+                        window.location.reload(); // Tải lại trang để đóng form và cập nhật điểm
+                    });
+                } else if (data.status === 'warning') {
+                    Swal.fire('Thông báo', data.message, 'warning').then(() => {
+                        myModal.hide(); // Đóng modal nếu đã điểm danh rồi
+                    });
+                } else {
+                    Swal.fire('Lỗi', data.message, 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến máy chủ điểm danh.', 'error');
+            });
+        });
     });
 </script>
 <?php endif; ?>
