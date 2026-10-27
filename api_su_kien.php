@@ -73,7 +73,8 @@ switch ($method) {
         }
         break;
 
-    case 'POST':
+case 'POST':
+        // 1. Nhận dữ liệu text từ form hoặc JSON
         $data = json_decode(file_get_contents("php://input"), true);
         if (!$data) {
             $data = $_POST;
@@ -81,6 +82,59 @@ switch ($method) {
 
         if (!empty($data)) {
             try {
+                // 2. KHỞI TẠO KẾT NỐI MINIO QUA DOCKER SERVICE
+                // (Đảm bảo project đã cài aws-sdk-php hoặc nạp autoload)
+                if (file_exists('vendor/autoload.php')) {
+                    require_once 'vendor/autoload.php';
+                }
+
+                $s3 = null;
+                if (class_exists('Aws\S3\S3Client')) {
+                    $s3 = new Aws\S3\S3Client([
+                        'version'                 => 'latest',
+                        'region'                  => 'us-east-1',
+                        'endpoint'                => 'http://minio:9000', // Tên service nội bộ trong compose.yaml
+                        'use_path_style_endpoint' => true,
+                        'credentials'             => [
+                            'key'    => getenv('MINIO_ROOT_USER') ?: 'minioadmin',
+                            'secret' => getenv('MINIO_ROOT_PASSWORD') ?: 'change_this_password',
+                        ],
+                    ]);
+                }
+
+                // 3. XỬ LÝ UPLOAD TỆP TIN POSTER NẾU CÓ
+                $uploaded_filename = null;
+                $object_key = null;
+                $file_type = null;
+                $file_size = 0;
+
+                if (isset($_FILES['hinh_anh']) && $_FILES['hinh_anh']['error'] === UPLOAD_ERR_OK) {
+                    $fileTmp  = $_FILES['hinh_anh']['tmp_name'];
+                    $fileName = basename($_FILES['hinh_anh']['name']);
+                    $fileSize = $_FILES['hinh_anh']['size'];
+                    $fileType = $_FILES['hinh_anh']['type'];
+
+                    // Quy tắc đặt object key: uploads/YYYY/MM/uuid_filename
+                    $objectKey = 'uploads/' . date('Y/m') . '/' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $fileName);
+                    $bucketName = getenv('MINIO_BUCKET_NAME') ?: 'event-posters';
+
+                    if ($s3) {
+                        // Đẩy file trực tiếp vào MinIO
+                        $s3->putObject([
+                            'Bucket'      => $bucketName,
+                            'Key'         => $objectKey,
+                            'SourceFile'  => $fileTmp,
+                            'ContentType' => $fileType,
+                        ]);
+                    }
+
+                    $uploaded_filename = $fileName;
+                    $object_key = $objectKey;
+                    $file_type = $fileType;
+                    $file_size = $fileSize;
+                }
+
+                // 4. LẤY CÁC CỘT HIỆN CÓ CỦA BẢNG su_kien
                 $stmt_cols = $db->query("SHOW COLUMNS FROM su_kien");
                 $columns = $stmt_cols->fetchAll(PDO::FETCH_COLUMN);
 
@@ -104,7 +158,17 @@ switch ($method) {
                 if (in_array('doi_tuong_tham_gia', $columns)) $insert_data['doi_tuong_tham_gia'] = $data['doi_tuong_tham_gia'] ?? null;
                 if (in_array('suc_chua', $columns)) $insert_data['suc_chua'] = $data['suc_chua'] ?? 0;
                 if (in_array('mo_ta', $columns)) $insert_data['mo_ta'] = $data['mo_ta'] ?? null;
-                if (in_array($col_img, $columns) && !empty($data['anh_hien_thị'])) $insert_data[$col_img] = $data['anh_hien_thị'];
+
+                // Gán tên file hoặc object key vào cột ảnh
+                $final_img = $object_key ?? $uploaded_filename ?? $data['anh_hien_thị'] ?? null;
+                if (in_array($col_img, $columns) && !empty($final_img)) {
+                    $insert_data[$col_img] = $final_img;
+                }
+
+                // Lưu thêm các cột metadata tệp nếu có trong bảng su_kien
+                if (in_array('file_name', $columns) && $uploaded_filename) $insert_data['file_name'] = $uploaded_filename;
+                if (in_array('file_path_key', $columns) && $object_key) $insert_data['file_path_key'] = $object_key;
+                if (in_array('file_size', $columns) && $file_size) $insert_data['file_size'] = $file_size;
 
                 $fields = array_keys($insert_data);
                 $placeholders = array_fill(0, count($fields), '?');
@@ -114,7 +178,8 @@ switch ($method) {
                 $success = $stmt->execute(array_values($insert_data));
 
                 if ($success) {
-                    echo json_encode(["status" => "success", "message" => "Thêm sự kiện thành công."]);
+                    http_response_code(201); // 201 Created theo chuẩn REST API đồ án
+                    echo json_encode(["status" => "success", "message" => "Thêm sự kiện và upload poster thành công."]);
                 } else {
                     http_response_code(500);
                     echo json_encode(["status" => "error", "message" => "Không thể thêm vào CSDL."]);
@@ -126,55 +191,6 @@ switch ($method) {
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Dữ liệu trống."]);
-        }
-        break;
-
-    case 'PUT':
-        $data = json_decode(file_get_contents("php://input"), true);
-        $id_val = $data['ma_sukien'] ?? $data['id'] ?? null;
-
-        if ($id_val) {
-            try {
-                $query = "UPDATE su_kien SET 
-                            ten_su_kien = :ten_su_kien, 
-                            thoi_gian_bat_dau = :thoi_gian_bat_dau, 
-                            ma_diadiem = :ma_diadiem, 
-                            mo_ta = :mo_ta 
-                          WHERE ma_sukien = :id OR id = :id";
-                $stmt = $db->prepare($query);
-                $stmt->execute([
-                    ':ten_su_kien' => $data['ten_su_kien'] ?? '',
-                    ':thoi_gian_bat_dau' => $data['thoi_gian_bat_dau'] ?? null,
-                    ':ma_diadiem' => $data['ma_diadiem'] ?? null,
-                    ':mo_ta' => $data['mo_ta'] ?? '',
-                    ':id' => $id_val
-                ]);
-
-                echo json_encode(["status" => "success", "message" => "Cập nhật sự kiện thành công!"]);
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(["status" => "error", "message" => $e->getMessage()]);
-            }
-        } else {
-            http_response_code(400);
-            echo json_encode(["status" => "error", "message" => "Thiếu mã sự kiện cần cập nhật."]);
-        }
-        break;
-
-    case 'DELETE':
-        $id_val = $_GET['ma_sukien'] ?? $_GET['id'] ?? null;
-        if ($id_val) {
-            $query = "DELETE FROM su_kien WHERE ma_sukien = :id OR id = :id";
-            $stmt = $db->prepare($query);
-            if ($stmt->execute([':id' => $id_val])) {
-                echo json_encode(["status" => "success", "message" => "Xóa sự kiện thành công!"]);
-            } else {
-                http_response_code(500);
-                echo json_encode(["status" => "error", "message" => "Không thể xóa sự kiện."]);
-            }
-        } else {
-            http_response_code(400);
-            echo json_encode(["status" => "error", "message" => "Thiếu mã sự kiện để xóa."]);
         }
         break;
 }
