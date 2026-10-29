@@ -21,7 +21,7 @@ try {
 $admin_ho_ten = $_SESSION['ho_ten'] ?? 'Admin';
 $admin_ma_sv  = $_SESSION['ma_sv'] ?? '';
 
-// Xử lý Mở / Đóng điểm danh trực tiếp tại Dashboard (Tránh lỗi 404)
+// Xử lý Mở / Đóng điểm danh trực tiếp tại Dashboard
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['open', 'close'])) {
     $eventId = $_POST['event_id'] ?? '';
     $action = $_POST['action'];
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_admin'])) {
 $stmt_pending = $conn->query("SELECT * FROM users WHERE yeu_cau_phan_quyen = 'pending'");
 $pending_requests = $stmt_pending->fetchAll();
 
-// 3. Lấy danh sách sự kiện phục vụ quản lý điểm danh (Sắp xếp tăng dần từ 1 đến 6 theo ma_sukien)
+// 3. Lấy danh sách sự kiện phục vụ quản lý điểm danh
 try {
     $stmt_events = $conn->query("SELECT * FROM su_kien ORDER BY ma_sukien ASC");
     $events_list = $stmt_events->fetchAll(PDO::FETCH_ASSOC);
@@ -86,7 +86,6 @@ $stmt_staff_list = $conn->query("SELECT ma_sv, ho_ten, email, sdt, chuc_vu_mong_
 $staff_members = $stmt_staff_list->fetchAll();
 $total_staff = count($staff_members);
 
-// 7. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
 // 7. Truy vấn danh sách sinh viên thuộc lớp kèm thống kê sự kiện & điểm rèn luyện
 $first_day_of_month = date('Y-m-01 00:00:00');
 $last_day_of_month  = date('Y-m-t 23:59:59');
@@ -129,21 +128,48 @@ $classes = $stmt_classes->fetchAll();
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Quản lý Lớp & Phân Quyền</title>
     <!-- Thêm Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Liên kết đường dẫn CSS chuẩn hiện tại -->
-    <link rel="stylesheet" href="../css/dashboard.css">
+    <!-- Liên kết file CSS chuẩn Admin -->
+    <link rel="stylesheet" type="text/css" href="../css/admin-dashboard.css?v=<?php echo time(); ?>">
 </head>
 <body>
-    <div class="container">
+
+<!-- 🌌 HIỆU ỨNG LOADING LÕI LƯỢNG TỬ 3D (CYBERPUNK REACTOR) -->
+    <div id="page-loader">
+      <div class="shooting-star"></div>
+      <div class="shooting-star"></div>
+      
+      <div class="quantum-reactor">
+        <div class="reactor-ring outer"></div>
+        <div class="reactor-ring middle"></div>
+        <div class="reactor-ring inner"></div>
+        <div class="reactor-core-pulse"></div>
+      </div>
+      
+      <div class="loader-text">Khởi tạo hệ thống lượng tử Admin...</div>
+    </div>
+    <!-- 1. Chèn Video Background (tự động chạy lặp lại, tắt tiếng để trình duyệt cho phép tự phát) -->
+    <video autoplay loop muted playsinline preload="auto" class="video-background">
+        <source src="videos/video03.mp4" type="video/mp4">
+        Trình duyệt của bạn không hỗ trợ video background.
+    </video>
+
+    <div class="container py-4">
         <!-- HEADER -->
         <div class="header">
             <h2>🛠️ Trang Quản Trị Hệ Thống (Admin)</h2>
             <div class="header-nav">
+                <!-- Nút chuyển đổi Sáng/Tối 3D Neon -->
+                <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng/Tối">
+                  <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+                </button>
+
                 <!-- 🔔 CHUÔNG THÔNG BÁO -->
-                <a href="#requests-section" class="notification-bell" title="Yêu cầu nâng cấp quyền">
+                <a href="#requests-section" class="notification-bell btn btn-sm position-relative" title="Yêu cầu nâng cấp quyền">
                     🔔 Thông báo
                     <?php if (count($pending_requests) > 0): ?>
                         <span class="notification-badge"><?php echo count($pending_requests); ?></span>
@@ -160,51 +186,51 @@ $classes = $stmt_classes->fetchAll();
         <?php if (count($pending_requests) > 0): ?>
             <div id="requests-section" class="approval-box">
                 <h3>🔔 Danh sách yêu cầu nâng cấp quyền (<?php echo count($pending_requests); ?>)</h3>
-                <table>
-                    <thead>
-                        <tr style="background: #ffe8a1;">
-                            <th>Mã SV</th>
-                            <th>Họ tên</th>
-                            <th>Lớp</th>
-                            <th>Chức vụ đăng ký</th>
-                            <th>Lý do xin nâng cấp</th>
-                            <th style="text-align: center;">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pending_requests as $req): ?>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($req['ma_sv']); ?></td>
-                                <td><strong><?php echo htmlspecialchars($req['ho_ten']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($req['ma_lop'] ?? ''); ?></td>
-                                <td><span style="color: #0d6efd; font-weight: bold;"><?php echo htmlspecialchars($req['chuc_vu_mong_muon'] ?? 'Chưa rõ'); ?></span></td>
-                                <td><span style="font-style: italic; color: #555;"><?php echo htmlspecialchars($req['ly_do_nang_cap'] ?? 'Không có lý do'); ?></span></td>
-                                <td style="text-align: center;">
-                                    <form method="POST" style="display: inline-block;">
-                                        <input type="hidden" name="target_user_id" value="<?php echo $req['id']; ?>">
-                                        <button type="submit" name="action_admin" value="approve" style="background: #198754; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Duyệt</button>
-                                        <button type="submit" name="action_admin" value="reject" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Từ chối</button>
-                                    </form>
-                                </td>
+                                <th>Mã SV</th>
+                                <th>Họ tên</th>
+                                <th>Lớp</th>
+                                <th>Chức vụ đăng ký</th>
+                                <th>Lý do xin nâng cấp</th>
+                                <th style="text-align: center;">Thao tác</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pending_requests as $req): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($req['ma_sv']); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($req['ho_ten']); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($req['ma_lop'] ?? ''); ?></td>
+                                    <td><span style="color: var(--neon-green); font-weight: bold;"><?php echo htmlspecialchars($req['chuc_vu_mong_muon'] ?? 'Chưa rõ'); ?></span></td>
+                                    <td><span style="font-style: italic; opacity: 0.8;"><?php echo htmlspecialchars($req['ly_do_nang_cap'] ?? 'Không có lý do'); ?></span></td>
+                                    <td style="text-align: center;">
+                                        <form method="POST" style="display: inline-block;">
+                                            <input type="hidden" name="target_user_id" value="<?php echo $req['id']; ?>">
+                                            <button type="submit" name="action_admin" value="approve" class="btn btn-success btn-sm fw-bold px-3 me-1">Duyệt</button>
+                                            <button type="submit" name="action_admin" value="reject" class="btn btn-danger btn-sm fw-bold px-3">Từ chối</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         <?php endif; ?>
 
-        <!-- ================================================================= -->
-        <!-- 🛡️ QUẢN LÝ ĐIỂM DANH SỰ KIỆN (MÃ PASSCODE 5 PHÚT) - ĐẶT LÊN TRÊN -->
-        <!-- ================================================================= -->
-        <div class="card text-white border-0 shadow-lg p-4 mb-4 rounded-4" style="background-color: #34495e !important; border: 1px solid #2c3e50 !important;">
-            <h4 class="text-success mb-3 fw-bold">
+        <!-- 🛡️ QUẢN LÝ ĐIỂM DANH SỰ KIỆN -->
+        <div class="approval-box mb-4">
+            <h3 class="text-success mb-3 fw-bold">
                 <i class="bi bi-shield-lock-fill me-2"></i> Quản lý Điểm Danh Sự Kiện (Mã Passcode 5 phút)
-            </h4>
+            </h3>
             
             <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle text-center border-secondary mb-0" style="background-color: #212529; border-radius: 8px; overflow: hidden;">
+                <table class="table align-middle text-center mb-0">
                     <thead>
-                        <tr class="table-secondary text-dark fw-bold">
+                        <tr>
                             <th style="width: 5%;">ID</th>
                             <th style="width: 30%; text-align: left; padding-left: 15px;">Tên sự kiện</th>
                             <th style="width: 15%;">Trạng thái điểm danh</th>
@@ -213,17 +239,17 @@ $classes = $stmt_classes->fetchAll();
                             <th style="width: 15%;">Thống kê</th>
                         </tr>
                     </thead>
-                    <tbody class="text-white">
+                    <tbody>
                         <?php if (count($events_list) > 0): ?>
                             <?php foreach ($events_list as $ev): ?>
                                 <?php 
-                                    $evId = $ev['ma_sukien'] ?? 0; // Khớp cột khóa chính ma_sukien
+                                    $evId = $ev['ma_sukien'] ?? 0;
                                     $eventTitle = $ev['ten_sukien'] ?? 'Sự kiện chưa có tên'; 
                                     $isOpen = isset($ev['is_attendance_open']) && $ev['is_attendance_open'] == 1;
                                     $passcode = $isOpen ? ($ev['passcode'] ?? '------') : '------';
                                 ?>
                                 <tr>
-                                    <td class="fw-bold text-white"><?php echo htmlspecialchars($evId); ?></td>
+                                    <td class="fw-bold"><?php echo htmlspecialchars($evId); ?></td>
                                     <td style="text-align: left; padding-left: 15px;" class="fw-semibold text-info">
                                         <?php echo htmlspecialchars($eventTitle); ?>
                                     </td>
@@ -240,7 +266,6 @@ $classes = $stmt_classes->fetchAll();
                                         </span>
                                     </td>
                                     <td>
-                                        <!-- action="" để gửi dữ liệu xử lý trực tiếp tại trang dashboard.php -->
                                         <form action="" method="POST" class="d-inline">
                                             <input type="hidden" name="event_id" value="<?php echo htmlspecialchars($evId); ?>">
                                             <?php if ($isOpen): ?>
@@ -263,7 +288,7 @@ $classes = $stmt_classes->fetchAll();
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-white-50 py-3">Chưa có sự kiện nào trong hệ thống.</td>
+                                <td colspan="6" class="text-center py-3">Chưa có sự kiện nào trong hệ thống.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -283,21 +308,19 @@ $classes = $stmt_classes->fetchAll();
             </select>
         </div>
 
-        <!-- 📊 THỐNG KÊ GRID (SINH VIÊN & NHÂN VIÊN) -->
+        <!-- 📊 THỐNG KÊ GRID -->
         <div class="stats-grid">
-            <!-- Thống kê lớp -->
             <div class="stat-card">
                 <h3>📊 Thống kê lớp: <?php echo htmlspecialchars($selected_class); ?></h3>
-                <p>Tổng số sinh viên: <span><?php echo $total_students; ?></span> người</p>
+                <p class="mb-0">Tổng số sinh viên: <span class="fw-bold text-success"><?php echo $total_students; ?></span> người</p>
             </div>
 
-            <!-- Thống kê nhân sự + Danh sách chi tiết -->
             <div class="stat-card-staff">
                 <h3>👔 Thống kê Nhân sự / Ban tổ chức</h3>
-                <p>Tổng số Quản lý sự kiện: <span><?php echo $total_staff; ?></span> người</p>
+                <p class="mb-2">Tổng số Quản lý sự kiện: <span class="fw-bold text-info"><?php echo $total_staff; ?></span> người</p>
 
                 <div class="staff-list-box">
-                    <div class="staff-list-title">📌 Danh sách Quản lý sự kiện hiện tại:</div>
+                    <div class="staff-list-title fw-bold mb-1">📌 Danh sách Quản lý sự kiện hiện tại:</div>
                     <?php if ($total_staff > 0): ?>
                         <ul class="staff-ul">
                             <?php foreach ($staff_members as $staff): ?>
@@ -316,54 +339,128 @@ $classes = $stmt_classes->fetchAll();
                             <?php endforeach; ?>
                         </ul>
                     <?php else: ?>
-                        <p style="font-size: 13px; color: #777; margin-top: 5px;">Chưa có quản lý sự kiện nào.</p>
+                        <p style="font-size: 13px; opacity: 0.7; margin-top: 5px;">Chưa có quản lý sự kiện nào.</p>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
 
         <!-- DANH SÁCH SINH VIÊN -->
-        <h3>📋 Danh sách sinh viên & Điểm rèn luyện</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>STT</th>
-                    <th>Mã SV</th>
-                    <th>Họ và tên</th>
-                    <th>Email</th>
-                    <th>Sự kiện tháng này</th>
-                    <th>Điểm rèn luyện cộng</th>
-                    <th>Trạng thái</th>
-                </tr>
-            </thead>
-            <tbody>
-    <?php if (count($students) > 0): ?>
-        <?php foreach ($students as $index => $sv): ?>
-            <tr>
-                <td><?php echo $index + 1; ?></td>
-                <td><?php echo htmlspecialchars($sv['ma_sv']); ?></td>
-                <td><?php echo htmlspecialchars($sv['ho_ten']); ?></td>
-                <td><?php echo htmlspecialchars($sv['email']); ?></td>
-                <td>
-                    <span class="badge bg-info text-dark rounded-pill fw-bold">
-                        <?php echo $sv['so_su_kien_thang']; ?> sự kiện
-                    </span>
-                </td>
-                <td>
-                    <span class="badge bg-warning text-dark rounded-pill fw-bold">
-                        +<?php echo $sv['tong_diem_ren_luyen']; ?> điểm
-                    </span>
-                </td>
-                <td><?php echo htmlspecialchars($sv['trang_thai']); ?></td>
-            </tr>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <tr>
-            <td colspan="7" class="text-center py-3">Không có sinh viên nào trong lớp này.</td>
-        </tr>
-    <?php endif; ?>
-</tbody>
-        </table>
+        <h3 class="mb-3">📋 Danh sách sinh viên & Điểm rèn luyện</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã SV</th>
+                        <th>Họ và tên</th>
+                        <th>Email</th>
+                        <th>Sự kiện tháng này</th>
+                        <th>Điểm rèn luyện cộng</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (count($students) > 0): ?>
+                        <?php foreach ($students as $index => $sv): ?>
+                            <tr>
+                                <td><?php echo $index + 1; ?></td>
+                                <td><?php echo htmlspecialchars($sv['ma_sv']); ?></td>
+                                <td><strong><?php echo htmlspecialchars($sv['ho_ten']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($sv['email']); ?></td>
+                                <td>
+                                    <span class="badge bg-info text-dark rounded-pill fw-bold">
+                                        <?php echo $sv['so_su_kien_thang']; ?> sự kiện
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark rounded-pill fw-bold">
+                                        +<?php echo $sv['tong_diem_ren_luyen']; ?> điểm
+                                    </span>
+                                </td>
+                                <td><?php echo htmlspecialchars($sv['trang_thai'] ?? 'Đang học'); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" class="text-center py-3">Không có sinh viên nào trong lớp này.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JAVASCRIPT: LOADING & CINEMATIC THEME RIPPLE (1.4s) -->
+    <script>
+        // 🌌 HIỆU ỨNG LOADING CỔNG THIÊN HÀ (ĐÚNG 2 GIÂY)
+        setTimeout(function() {
+            const loader = document.getElementById('page-loader');
+            if(loader && !loader.classList.contains('loaded')) {
+                loader.classList.add('loaded');
+            }
+        }, 2000);
+
+        // 🌗 XỬ LÝ CHUYỂN ĐỔI SÁNG / TỐI VỚI HIỆU ỨNG LOANG MÀU CINEMATIC CHẬM (1.4s)
+        const toggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        updateIcon(currentTheme);
+
+        if(toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                let theme = document.documentElement.getAttribute('data-theme');
+                let newTheme = theme === 'dark' ? 'light' : 'dark';
+
+                const rect = toggleBtn.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+
+                const ripple = document.createElement('div');
+                ripple.className = 'theme-ripple-overlay';
+                ripple.style.background = newTheme === 'dark' 
+                    ? 'radial-gradient(circle, rgba(13,2,26,0.95) 0%, rgba(5,1,13,0.98) 60%, rgba(0,0,0,1) 100%)' 
+                    : 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(226,232,240,0.98) 60%, rgba(203,213,225,1) 100%)';
+                
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                ripple.style.marginLeft = '-60vh';
+                ripple.style.marginTop = '-60vh';
+                ripple.style.width = '120vh';
+                ripple.style.height = '120vh';
+                
+                document.body.appendChild(ripple);
+
+                setTimeout(() => {
+                    ripple.classList.add('active');
+                }, 30);
+
+                setTimeout(() => {
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateIcon(newTheme);
+                }, 700);
+
+                setTimeout(() => {
+                    ripple.remove();
+                }, 1420);
+            });
+        }
+
+        function updateIcon(theme) {
+            if(!themeIcon) return;
+            if(theme === 'dark') {
+                themeIcon.className = 'bi bi-sun-fill';
+            } else {
+                themeIcon.className = 'bi bi-moon-stars-fill';
+            }
+        }
+        
+    </script>
 </body>
 </html>

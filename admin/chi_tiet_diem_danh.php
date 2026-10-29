@@ -135,8 +135,6 @@ try {
 </head>
 <body class="bg-dark text-white">
 
-    <?php include_once __DIR__ . '/../header.php'; ?>
-
     <main class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-10">
