@@ -79,18 +79,29 @@ if (isset($_POST['btn_toggle_attendance'])) {
     }
 }
 
-// Lấy danh sách sinh viên đăng ký tham gia sự kiện này
+// Lấy danh sách sinh viên tham gia sự kiện 
 $registrations = [];
 try {
     $stmtReg = $pdo->prepare("
-        SELECT d.*, u.username, u.hoten, u.email 
-        FROM dang_ky d 
-        LEFT JOIN users u ON d.user_id = u.id 
+        SELECT d.*, u.ma_sv, u.ho_ten, u.email 
+        FROM dang_ky_su_kien d
+        LEFT JOIN users u ON (d.user_id = u.id OR d.user_id = u.ma_sv)
         WHERE d.su_kien_id = ?
     ");
     $stmtReg->execute([$eventId]);
     $registrations = $stmtReg->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {}
+} catch (Exception $ex) {
+    try {
+        $stmtReg = $pdo->prepare("
+            SELECT d.*, u.ma_sv, u.ho_ten, u.email 
+            FROM dang_ky d
+            LEFT JOIN users u ON (d.user_id = u.id OR d.user_id = u.ma_sv)
+            WHERE d.su_kien_id = ? OR d.ma_sukien = ?
+        ");
+        $stmtReg->execute([$eventId, $eventId]);
+        $registrations = $stmtReg->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -123,8 +134,6 @@ try {
     </style>
 </head>
 <body class="bg-dark text-white">
-
-    <?php include_once __DIR__ . '/../header.php'; ?>
 
     <main class="container py-5">
         <div class="row justify-content-center">
@@ -194,7 +203,7 @@ try {
                                 <tr class="text-info">
                                     <th>STT</th>
                                     <th>Họ Tên</th>
-                                    <th>Tên Tài Khoản</th>
+                                    <th>Mã Sinh Viên</th>
                                     <th>Trạng Thái</th>
                                     <th>Thời Gian Điểm Danh</th>
                                 </tr>
@@ -204,21 +213,29 @@ try {
                                     <?php foreach ($registrations as $index => $reg): ?>
                                         <tr class="text-light">
                                             <td><?php echo $index + 1; ?></td>
-                                            <td class="fw-bold"><?php echo htmlspecialchars($reg['hoten'] ?? $reg['username'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($reg['username'] ?? 'N/A'); ?></td>
+                                            <!-- SỬA LỖI TÊN BIẾN HIỂN THỊ DỮ LIỆU -->
+                                            <td class="fw-bold"><?php echo htmlspecialchars($reg['ho_ten'] ?? 'Chưa cập nhật'); ?></td>
+                                            <td><?php echo htmlspecialchars($reg['ma_sv'] ?? 'Chưa cập nhật'); ?></td>
                                             <td>
-                                                <?php if (isset($reg['status_attendance']) && $reg['status_attendance'] === 'present'): ?>
+                                                <?php 
+                                                    // Kiểm tra đồng thời trạng thái của bảng dang_ky và dang_ky_su_kien
+                                                    $is_present = (
+                                                        (isset($reg['status_attendance']) && $reg['status_attendance'] === 'present') || 
+                                                        (isset($reg['trang_thai']) && $reg['trang_thai'] === 'da_tham_gia')
+                                                    );
+                                                ?>
+                                                <?php if ($is_present): ?>
                                                     <span class="badge bg-success px-3 py-2">Đã điểm danh</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-secondary px-3 py-2 text-light">Chưa điểm danh</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo htmlspecialchars($reg['attended_at'] ?? '---'); ?></td>
+                                            <td><?php echo htmlspecialchars($reg['thoi_gian_diem_danh'] ?? $reg['attended_at'] ?? '---'); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="5" class="text-center text-light opacity-75 py-4">Chưa có sinh viên nào đăng ký tham gia sự kiện này.</td>
+                                        <td colspan="5" class="text-center text-light opacity-75 py-4">Chưa có sinh viên nào đăng ký tham gia hoặc điểm danh sự kiện này.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -227,6 +244,7 @@ try {
                 </div>
 
                 <div class="mt-4 text-center">
+                    <!-- Bạn có thể sửa URL nút Quay lại nếu cần -->
                     <a href="dashboard.php" class="btn btn-outline-light px-4 py-2">
                         <i class="bi bi-arrow-left me-1"></i> Quay lại Dashboard
                     </a>

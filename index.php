@@ -57,7 +57,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     <p>Sinh viên tham gia</p>
                 </div>
                 <div class="stat-card">
-                    <h3>+10 ĐRL</h3>
+                    <h3>+5 ĐRL</h3>
                     <p>Điểm rèn luyện trung bình</p>
                 </div>
             </div>
@@ -110,12 +110,6 @@ if (session_status() === PHP_SESSION_NONE) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Thêm một Card phụ trợ (Điểm danh sự kiện) -->
-                <div class="card card-sub">
-                    <h3>Điểm danh sự kiện</h3>
-                    <p>Sử dụng mã QR cá nhân để điểm danh nhanh chóng tại các sự kiện của trường.</p>
-                    <a href="diem-danh.php" class="card-btn">Mã QR của tôi</a>
-                </div>
             </div>
         </div>
     </main>
