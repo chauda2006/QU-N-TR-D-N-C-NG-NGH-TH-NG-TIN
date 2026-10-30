@@ -5,21 +5,19 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
 ?>
 <div style="text-align: right; margin: 20px 20px 0 0;">
     <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
-        <!-- 🌟 ĐỔI DẤU + CŨ THÀNH ICON PHÁT SÁNG CAO CẤP -->
         <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
     </a>
-   <!-- Nút Xóa sự kiện -->
-<a href="user/delete.php" class="btn-space-danger">
-    <i class="bi bi-gear-fill"></i> Xóa
-</a>
-
-<!-- Nút Sửa sự kiện -->
-<a href="user/xuly_sua.php" class="btn-space-warning">
-    <i class="bi bi-gear-fill"></i> Sửa
-</a>
+    <!-- Nút Xóa sự kiện -->
+    <a href="user/delete.php" class="btn-space-danger">
+        <i class="bi bi-gear-fill"></i> Xóa
+    </a>
+    <!-- Nút Sửa sự kiện -->
+    <a href="user/xuly_sua.php" class="btn-space-warning">
+        <i class="bi bi-gear-fill"></i> Sửa
+    </a>
 </div>
-
 <?php endif; ?>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -30,25 +28,171 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/header.css">
     <link rel="stylesheet" type="text/css" href="./css/nut-su-kien.css?v=<?php echo time(); ?>">
-        <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
-  <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
-<link rel="stylesheet" href="css/header.css">
-    <!-- CSS để biến Video thành Background toàn màn hình -->
-<!-- CSS để biến Video thành Background toàn màn hình -->
+    <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
 
+    <!-- CSS TINH CHỈNH 3D SCI-FI CHO THANH TÌM KIẾM & NÚT LỌC -->
+    <style>
+        /* Tiêu đề vũ trụ */
+        .event-heading {
+            color: #ffffff !important;
+            text-align: center !important;
+            font-size: 2.6rem !important;
+            font-weight: 900 !important;
+            letter-spacing: 4px !important;
+            margin-top: 15px !important;
+            margin-bottom: 30px !important;
+            text-transform: uppercase !important;
+            background: linear-gradient(180deg, #ffffff 0%, #34d399 50%, #00f3ff 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 25px rgba(0, 243, 255, 0.6)) !important;
+        }
 
+        /* Thanh tìm kiếm 3D Glassmorphism */
+        .search-box-wrapper {
+            position: relative !important;
+            max-width: 740px !important;
+            margin: 10px auto 30px auto !important;
+            background: linear-gradient(135deg, rgba(11, 16, 32, 0.92) 0%, rgba(5, 8, 18, 0.96) 100%) !important;
+            backdrop-filter: blur(25px) !important;
+            -webkit-backdrop-filter: blur(25px) !important;
+            border: 1.8px solid rgba(0, 243, 255, 0.4) !important;
+            border-radius: 50px !important;
+            padding: 7px 9px 7px 18px !important;
+            display: flex !important;
+            align-items: center !important;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.25), inset 0 -2px 10px rgba(0, 243, 255, 0.15) !important;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        .search-box-wrapper:hover,
+        .search-box-wrapper:focus-within {
+            border-color: #00f3ff !important;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 243, 255, 0.6), inset 0 0 15px rgba(0, 243, 255, 0.2) !important;
+            transform: translateY(-4px) !important;
+        }
+
+        .search-icon-inside {
+            position: absolute !important;
+            left: 24px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            color: #00f3ff !important;
+            font-size: 1.35rem !important;
+            pointer-events: none !important;
+            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.9)) !important;
+            z-index: 5 !important;
+        }
+
+        .search-box-wrapper .input-group {
+            display: flex !important;
+            align-items: center !important;
+            width: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .custom-search-input {
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            color: #ffffff !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            padding: 12px 18px 12px 48px !important;
+            flex: 1 !important;
+            width: auto !important;
+        }
+
+        .custom-search-input:focus {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #ffffff !important;
+        }
+
+        .custom-search-input::placeholder {
+            color: #64748b !important;
+        }
+
+        .btn-custom-search {
+            background: linear-gradient(135deg, #f43f5e 0%, #059669 100%) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            border-radius: 40px !important;
+            padding: 12px 36px !important;
+            font-weight: 800 !important;
+            font-size: 15px !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            box-shadow: 0 6px 20px rgba(244, 63, 94, 0.45) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .btn-custom-search:hover {
+            background: linear-gradient(135deg, #00f3ff 0%, #10b981 100%) !important;
+            color: #03040b !important;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.85) !important;
+            transform: scale(1.03) !important;
+        }
+
+        /* Cụm nút lọc sự kiện */
+        .filter-box-wrapper {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 15px !important;
+            margin: 0 auto 35px auto !important;
+            flex-wrap: wrap !important;
+        }
+
+        .btn-filter-custom {
+            background: rgba(11, 15, 28, 0.75) !important;
+            backdrop-filter: blur(15px) !important;
+            -webkit-backdrop-filter: blur(15px) !important;
+            border: 1.5px solid rgba(52, 211, 153, 0.3) !important;
+            color: #94a3b8 !important;
+            padding: 10px 24px !important;
+            border-radius: 30px !important;
+            font-size: 14.5px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+
+        .btn-filter-custom:hover {
+            color: #00f3ff !important;
+            border-color: #00f3ff !important;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        .btn-filter-custom.active {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.9) 0%, rgba(16, 185, 129, 0.9) 100%) !important;
+            color: #ffffff !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.6), 0 6px 15px rgba(244, 63, 94, 0.4) !important;
+            transform: scale(1.03) !important;
+        }
+    </style>
 </head>
 <body>
 
-    <!-- Chèn Video Background (autoplay: tự chạy, loop: lặp lại, muted: tắt tiếng bắt buộc để trình duyệt cho phép tự chạy) -->
-    <!-- Cập nhật lại thẻ video của bạn thành thế này -->
-<video autoplay loop muted playsinline preload="auto" class="video-background">
-    <source src="videos/video01.mp4" type="video/mp4">
-    Trình duyệt của bạn không hỗ trợ video background.
-</video>
-
+    <!-- Video Background -->
+    <video autoplay loop muted playsinline preload="auto" class="video-background">
+        <source src="videos/video01.mp4" type="video/mp4">
+        Trình duyệt của bạn không hỗ trợ video background.
+    </video>
     
-    <!-- Lớp phủ tối giúp chữ màu trắng/xanh của bạn không bị chìm vào video -->
+    <!-- Lớp phủ tối -->
     <div class="video-overlay"></div>
 
     <?php include_once 'header.php'; ?>
@@ -58,6 +202,7 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
             Danh sách sự kiện
         </h1>
         
+        <!-- Thanh tìm kiếm 3D -->
         <div class="search-box-wrapper">
             <i class="bi bi-search search-icon-inside"></i>
             <div class="input-group">
@@ -68,6 +213,19 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
             </div>
         </div>
 
+        <!-- Cụm nút lọc sự kiện mới & sắp diễn ra -->
+        <div class="filter-box-wrapper">
+            <button class="btn-filter-custom active" data-filter="all">
+                <i class="bi bi-grid-fill me-2"></i>Tất cả
+            </button>
+            <button class="btn-filter-custom" data-filter="newest">
+                <i class="bi bi-stars me-2"></i>Sự kiện mới
+            </button>
+            <button class="btn-filter-custom" data-filter="upcoming">
+                <i class="bi bi-hourglass-split me-2"></i>Sắp diễn ra
+            </button>
+        </div>
+
         <div id="event-list" class="row">
             <p class="event-message">
                 <i class="bi bi-arrow-repeat me-2"></i> Đang tải danh sách sự kiện.
@@ -75,7 +233,7 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
         </div>
     </main>
 
-    <!-- Cửa sổ xem chi tiết và Đăng ký kết hợp phân tách giao diện linh hoạt -->
+    <!-- Modal Xem chi tiết và Đăng ký -->
     <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="detailTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="background-color: #1a1d29; color: #e2e8f0; border: 1px solid #2d3142;">
@@ -83,11 +241,9 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
                     <h5 class="modal-title text-success fw-bold" id="detailTitle">
                         Chi tiết sự kiện
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng">
-                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- KHỐI THÔNG TIN -->
                     <div id="modalEventInfo">
                         <div class="detail-info mb-2">
                             <i class="bi bi-upc-scan text-success me-2"></i>
@@ -143,7 +299,6 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
                         <p id="detailDescription" class="mb-3 text-muted small"></p>
                     </div>
 
-                    <!-- KHỐI BIỂU MẪU -->
                     <div id="modalRegisterSection">
                         <hr id="modalRegisterDivider" style="border-color:#444;">
                         <h6 style="color:#10b981;" class="fw-bold mb-3">
@@ -153,10 +308,10 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
                         <form id="modalRegisterForm">
                             <input type="hidden" id="formEventId">
                             <div class="text-center mt-3">
-    <a id="btnRegisterModal" href="dang-ky.php" class="btn btn-danger w-100 fw-bold py-2">
-        <i class="bi bi-pencil-square me-2"></i>Đăng ký tham gia
-    </a>
-</div>
+                                <a id="btnRegisterModal" href="dang-ky.php" class="btn btn-danger w-100 fw-bold py-2">
+                                    <i class="bi bi-pencil-square me-2"></i>Đăng ký tham gia
+                                </a>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -169,15 +324,86 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
+    </script>
+    
+    <!-- Script xử lý chuyển trạng thái nút lọc và lọc thời gian bắt đầu/kết thúc -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const filterButtons = document.querySelectorAll(".btn-filter-custom");
+
+            filterButtons.forEach(btn => {
+                btn.addEventListener("click", function () {
+                    filterButtons.forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+
+                    const filterType = this.getAttribute("data-filter");
+                    if (typeof filterEvents === "function") {
+                        filterEvents(filterType);
+                    }
+                });
+            });
+        });
+
+        // Hàm logic lọc sự kiện theo thời gian bắt đầu và kết thúc
+        function filterEvents(filterType) {
+            const eventColumns = document.querySelectorAll('.event-column');
+            const now = new Date();
+
+            eventColumns.forEach(col => {
+                // Quét thông tin thời gian bắt đầu/kết thúc hiển thị trong card
+                const textContent = col.innerText || '';
+                
+                // Tìm kiếm chuỗi định dạng ngày giờ dạng DD/MM/YYYY HH:MM
+                const matches = textContent.match(/(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2})?)/g);
+                
+                let startDate = null;
+                let endDate = null;
+
+                if (matches && matches.length > 0) {
+                    // Lấy mốc thời gian bắt đầu đầu tiên tìm thấy
+                    let startParts = matches[0].split(' ');
+                    let dateParts = startParts[0].split('/');
+                    let timeParts = startParts[1] ? startParts[1].split(':') : [0, 0];
+                    startDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+
+                    // Nếu có mốc thời gian thứ hai (thời gian kết thúc)
+                    if (matches.length > 1) {
+                        let endParts = matches[1].split(' ');
+                        let endDateParts = endParts[0].split('/');
+                        let endTimeParts = endParts[1] ? endParts[1].split(':') : [0, 0];
+                        endDate = new Date(endDateParts[2], endDateParts[1] - 1, endDateParts[0], endTimeParts[0], endTimeParts[1]);
+                    }
+                }
+
+                // Thực hiện ẩn/hiện card theo nút lọc
+                if (filterType === 'all') {
+                    col.style.display = 'block';
+                } 
+                else if (filterType === 'upcoming') {
+                    // Sắp diễn ra: Thời gian bắt đầu lớn hơn hiện tại
+                    if (startDate && startDate > now) {
+                        col.style.display = 'block';
+                    } else {
+                        col.style.display = 'none';
+                    }
+                } 
+                else if (filterType === 'newest') {
+                    // Sự kiện mới: Sự kiện vừa mới bắt đầu hoặc diễn ra trong thời gian gần đây
+                    if (startDate && startDate >= now) {
+                        col.style.display = 'block';
+                    } else {
+                        col.style.display = 'none';
+                    }
+                }
+            });
+        }
+    </script>
+
+    <!-- Gọi file JS chính của bạn -->
     <script src="js/su-kien.js"></script>
-    <!-- Truyền quyền từ PHP sang JavaScript -->
-<script>
-    const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
-
-</script>
-
-<!-- Sau đó mới gọi file js -->
-<script src="js/su-kien.js"></script>
 </body>
 </html>
