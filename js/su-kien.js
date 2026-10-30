@@ -107,8 +107,13 @@ document.addEventListener('DOMContentLoaded', function () {
             card.querySelector('.event-date').textContent = 'Bắt đầu: ' + formatDate(startDate);
             card.querySelector('.event-location').textContent = 'Địa điểm: ' + location;
           
-            const imageValue = getProp(event, 'hinh_anh', 'hinhanh', 'image');
+const imageValue = getProp(event, 'anh_hien_thi', 'file_name', 'anh_bia', 'hinh_anh', 'anh', 'image');
             let imagePath = imageValue ? String(imageValue).trim() : '';
+
+            // BẮT BUỘC PHẢI CÓ KHÚC NÀY: Ghép thêm chữ images/ vào trước tên file
+            if (imagePath && !imagePath.startsWith('http') && !imagePath.startsWith('images/')) {
+                imagePath = 'images/' + imagePath;
+            }
 
             if (!imagePath) {
                 const normalizedTitle = normalizeText(title);
@@ -120,9 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 else if (normalizedTitle.includes('giao lưu')) {imagePath = 'images/sukien05.jpg';}
                 else if (normalizedTitle.includes('hội thảo')) {imagePath = 'images/sukien06.jpg';} 
                 else {imagePath = 'images/sukien01.jpg';}
-    
             }
-
             const img = card.querySelector('.event-image');
             img.alt = title;
             img.src = imagePath;
@@ -371,10 +374,12 @@ events.forEach(function (event) {
             // Xử lý đường dẫn ảnh
             const imageValue = getProp(event, 'anh_hien_thi', 'anh_bia', 'hinh_anh', 'anh', 'file_name', 'image');
             let imagePath = imageValue ? String(imageValue).trim() : '';
-            if (imagePath && !imagePath.startsWith('http://') && !imagePath.startsWith('https://') && !imagePath.startsWith('/') && !imagePath.startsWith('images/')) {
+if (imagePath && !imagePath.startsWith('http') && !imagePath.startsWith('images/')) {
                 imagePath = 'images/' + imagePath;
             }
-            if (!imagePath) imagePath = 'images/sukien1.jpg';
+
+            if (!imagePath) {
+                const normalizedTitle = normalizeText(title);
 
             const img = card.querySelector('.event-image');
             img.src = imagePath;
@@ -429,29 +434,5 @@ events.forEach(function (event) {
             }
 
             eventList.appendChild(card);
-        });
-           document.addEventListener("DOMContentLoaded", function () {
-        const eventCards = document.querySelectorAll(".event-card");
-
-        eventCards.forEach(card => {
-            // Tạo hiệu ứng nghiêng 3D tinh tế theo con trỏ chuột
-            card.addEventListener("mousemove", function (e) {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-
-                const rotateX = (y - centerY) / 25;
-                const rotateY = (centerX - x) / 25;
-
-                card.style.transform = `translateY(-10px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-            });
-
-            // Trả về trạng thái chuẩn khi rê chuột ra ngoài
-            card.addEventListener("mouseleave", function () {
-                card.style.transform = "translateY(0px) rotateX(0deg) rotateY(0deg) scale(1)";
-            });
-        });
-    });
+}
+});
