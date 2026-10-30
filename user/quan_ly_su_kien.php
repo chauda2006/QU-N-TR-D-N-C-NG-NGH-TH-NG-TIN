@@ -36,18 +36,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['them_su_kien'])) {
 
     // 📸 Xử lý upload ảnh lưu trực tiếp vào thư mục ../images/
     $anh_bia_name = "";
-    if (isset($_FILES['anh_bia']) && $_FILES['anh_bia']['error'] === UPLOAD_ERR_OK) {$file_tmp = $_FILES['anh_bia']['tmp_name'];$file_size = $_FILES['anh_bia']['size'];$file_ext = strtolower(pathinfo($_FILES['anh_bia']['name'], PATHINFO_EXTENSION));$allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    if (isset($_FILES['anh_su_kien']) && $_FILES['anh_su_kien']['error'] === UPLOAD_ERR_OK) {$file_tmp = $_FILES['anh_su_kien']['tmp_name'];$file_size = $_FILES['anh_su_kien']['size'];$file_ext = strtolower(pathinfo($_FILES['anh_su_kien']['name'], PATHINFO_EXTENSION));$allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
         // Giới hạn phía server: 5MB (5242880 bytes)
         if ($file_size > 5 * 1024 * 1024) {$error = "Dung lượng ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.";
         } elseif (!in_array($file_ext, $allowed_ext)) {$error = "Định dạng ảnh không hợp lệ (Chỉ chấp nhận JPG, PNG, GIF, WEBP).";
         } else {
-            $upload_dir = '../images/'; 
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
+            $upload_dir = __DIR__ . '/../images/';
+            if (!is_dir($upload_dir) && !mkdir($upload_dir, 0777, true) && !is_dir($upload_dir)) {
+                $error = "Không thể tạo thư mục lưu ảnh.";
+            } else {
+                $anh_bia_name = time() . '_' . uniqid() . '.' . $file_ext;
+                if (!move_uploaded_file($file_tmp, $upload_dir . $anh_bia_name)) {
+                    $error = "Không thể lưu ảnh vào thư mục images.";
+                    $anh_bia_name = "";
+                }
             }
-            $anh_bia_name = time() . '_' . uniqid() . '.' . $file_ext;
-            move_uploaded_file($file_tmp, $upload_dir .$anh_bia_name);
         }
     }
 

@@ -1,6 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
@@ -37,10 +38,10 @@ switch ($method) {
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($data) {
                 $ten_anh = '';
-                if (!empty($data['anh_bia'])) $ten_anh = $data['anh_bia'];
+                if (!empty($data['file_name'])) $ten_anh = $data['file_name'];
+                elseif (!empty($data['anh_bia'])) $ten_anh = $data['anh_bia'];
                 elseif (!empty($data['hinh_anh'])) $ten_anh = $data['hinh_anh'];
                 elseif (!empty($data['anh'])) $ten_anh = $data['anh'];
-                elseif (!empty($data['file_name'])) $ten_anh = $data['file_name'];
 
                 $data['anh_hien_thi'] = trim($ten_anh);
                 echo json_encode($data);
@@ -60,10 +61,10 @@ switch ($method) {
 
             foreach ($result as &$row) {
                 $ten_anh = '';
-                if (!empty($row['anh_bia'])) $ten_anh = $row['anh_bia'];
+                if (!empty($row['file_name'])) $ten_anh = $row['file_name'];
+                elseif (!empty($row['anh_bia'])) $ten_anh = $row['anh_bia'];
                 elseif (!empty($row['hinh_anh'])) $ten_anh = $row['hinh_anh'];
                 elseif (!empty($row['anh'])) $ten_anh = $row['anh'];
-                elseif (!empty($row['file_name'])) $ten_anh = $row['file_name'];
 
                 $row['anh_hien_thi'] = trim($ten_anh);
             }
@@ -89,13 +90,15 @@ case 'POST':
             $file_error = $_FILES['anh_su_kien']['error'];
             
             if ($file_error == 0) { // === UPLOAD_ERR_OK
-                $target_dir = "images/"; 
-                if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+                $target_dir = __DIR__ . DIRECTORY_SEPARATOR . "images" . DIRECTORY_SEPARATOR;
+                if (!is_dir($target_dir) && !mkdir($target_dir, 0777, true) && !is_dir($target_dir)) {
+                    $loi_anh = "Không thể tạo thư mục images/ để lưu ảnh.";
+                }
 
                 $file_ext = strtolower(pathinfo($_FILES["anh_su_kien"]["name"], PATHINFO_EXTENSION));
                 $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
                 
-                if (in_array($file_ext, $allowed_types)) {
+                if ($loi_anh === "" && in_array($file_ext, $allowed_types, true)) {
                     if ($_FILES["anh_su_kien"]["size"] <= 5242880) { // 5MB
                         $new_name = time() . '_' . uniqid() . '.' . $file_ext;
                         if (move_uploaded_file($_FILES["anh_su_kien"]["tmp_name"], $target_dir . $new_name)) {
@@ -106,12 +109,18 @@ case 'POST':
                     } else {
                         $loi_anh = "Dung lượng ảnh vượt quá 5MB.";
                     }
-                } else {
+                } elseif ($loi_anh === "") {
                     $loi_anh = "Định dạng file (.$file_ext) không được hỗ trợ.";
                 }
             } elseif ($file_error != 4) { // Lỗi số 4 là do người dùng KHÔNG chọn ảnh -> Bỏ qua không báo lỗi
                 $loi_anh = "Lỗi hệ thống tải file (Mã lỗi PHP: $file_error).";
             }
+        }
+
+        if ($loi_anh !== "") {
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => $loi_anh]);
+            break;
         }
 
         // Tự động quét danh sách các cột có thật trong DB
@@ -259,9 +268,9 @@ case 'POST':
 
                 // 2. KIỂM TRA & UPLOAD ẢNH (Chỉ chạy nếu $_FILES tồn tại)
                 if (isset($_FILES['anh_su_kien']) && $_FILES['anh_su_kien']['error'] === UPLOAD_ERR_OK) {
-                    $target_dir = "images/"; 
-                    if (!is_dir($target_dir)) {
-                        mkdir($target_dir, 0777, true);
+                    $target_dir = __DIR__ . DIRECTORY_SEPARATOR . "images" . DIRECTORY_SEPARATOR;
+                    if (!is_dir($target_dir) && !mkdir($target_dir, 0777, true) && !is_dir($target_dir)) {
+                        throw new RuntimeException("Không thể tạo thư mục images/ để lưu ảnh.");
                     }
 
                     $file_extension = strtolower(pathinfo($_FILES["anh_su_kien"]["name"], PATHINFO_EXTENSION));
