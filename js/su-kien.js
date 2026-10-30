@@ -430,4 +430,28 @@ events.forEach(function (event) {
 
             eventList.appendChild(card);
         });
-        
+           document.addEventListener("DOMContentLoaded", function () {
+        const eventCards = document.querySelectorAll(".event-card");
+
+        eventCards.forEach(card => {
+            // Tạo hiệu ứng nghiêng 3D tinh tế theo con trỏ chuột
+            card.addEventListener("mousemove", function (e) {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                const rotateX = (y - centerY) / 25;
+                const rotateY = (centerX - x) / 25;
+
+                card.style.transform = `translateY(-10px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+            });
+
+            // Trả về trạng thái chuẩn khi rê chuột ra ngoài
+            card.addEventListener("mouseleave", function () {
+                card.style.transform = "translateY(0px) rotateX(0deg) rotateY(0deg) scale(1)";
+            });
+        });
+    });

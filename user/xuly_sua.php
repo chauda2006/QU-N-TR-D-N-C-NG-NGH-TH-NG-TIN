@@ -2,11 +2,20 @@
 session_start();
 require_once '../database.php';
 
+// Kiểm tra kết nối cơ sở dữ liệu từ file database.php
 $db = isset($conn) ? $conn : (isset($pdo) ? $pdo : null);
 if (!$db) {
     die("Lỗi: Không tìm thấy kết nối cơ sở dữ liệu.");
 }
 
+// Cấu hình tăng timeout cho PDO để chống ngắt kết nối đột ngột (MySQL server has gone away)
+try {
+    $db->setAttribute(PDO::ATTR_TIMEOUT, 60);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->exec("SET SESSION wait_timeout=3600");
+} catch (Exception $e) {}
+
+// Kiểm tra quyền quản trị của người dùng
 $vai_tro = $_SESSION['vai_tro'] ?? '';
 $isManager = in_array(strtolower(trim($vai_tro)), ['admin', 'quan_ly_su_kien', 'quan_ly', 'management']);
 if (!$isManager) {
@@ -24,9 +33,15 @@ function getColValue($row, ...$keys) {
     return '';
 }
 
-$stmtCols = $db->query("SHOW COLUMNS FROM su_kien");
-$existingCols = $stmtCols->fetchAll(PDO::FETCH_COLUMN);
-$existingColsLower = array_map('strtolower', $existingCols);
+// Lấy danh sách các cột thực tế trong bảng su_kien để tương thích ngược
+try {
+    $stmtCols = $db->query("SHOW COLUMNS FROM su_kien");
+    $existingCols = $stmtCols->fetchAll(PDO::FETCH_COLUMN);
+    $existingColsLower = array_map('strtolower', $existingCols);
+} catch (Exception $e) {
+    $existingCols = [];
+    $existingColsLower = [];
+}
 
 function findRealCol($existingCols, $candidates, $default) {
     foreach ($candidates as $c) {
@@ -80,6 +95,7 @@ if ($id) {
 $error_msg = "";
 $save_success = false;
 
+// Xử lý cập nhật dữ liệu khi submit form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
     $post_id      = $_POST['ma_sukien'] ?? null;
     $ten_su_kien  = trim($_POST['ten_su_kien'] ?? '');
@@ -101,11 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if (in_array(strtolower($colStart), $existingColsLower)) {
                 $updateFields[] = "{$colStart} = :bat_dau";
-                $params[':bat_dau'] = !empty($bat_dau) ? $bat_dau : null;
+                $params[':bat_dau'] = !empty($bat_dau) ? date('Y-m-d H:i:s', strtotime($bat_dau)) : null;
             }
             if (in_array(strtolower($colEnd), $existingColsLower)) {
                 $updateFields[] = "{$colEnd} = :ket_thuc";
-                $params[':ket_thuc'] = !empty($ket_thuc) ? $ket_thuc : null;
+                $params[':ket_thuc'] = !empty($ket_thuc) ? date('Y-m-d H:i:s', strtotime($ket_thuc)) : null;
             }
 
             if (in_array('ma_diadiem', $existingColsLower)) {

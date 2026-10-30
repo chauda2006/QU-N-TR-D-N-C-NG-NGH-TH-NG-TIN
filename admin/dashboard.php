@@ -135,10 +135,111 @@ $classes = $stmt_classes->fetchAll();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <!-- Liên kết file CSS chuẩn Admin -->
     <link rel="stylesheet" type="text/css" href="../css/admin-dashboard.css?v=<?php echo time(); ?>">
+<style>
+    /* Ép sạch lề và khoảng trống thừa ở đầu trang */
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .container, 
+    .admin-main-container, 
+    .admin-header-box, 
+    .header {
+      margin-top: 0 !important;
+      padding-top: 10px !important;
+    }
+
+    .video-background {
+      top: 0 !important;
+      left: 0 !important;
+      position: fixed !important;
+    }
+
+    /* ==========================================================
+       ÉP MÀU CHÍNH XÁC CHO CHẾ ĐỘ TỐI (DARK THEME) 
+       ========================================================== */
+    html[data-theme="dark"] body {
+        background-color: #050515 !important;
+        color: #ffffff !important;
+    }
+
+    html[data-theme="dark"] .approval-box,
+    html[data-theme="dark"] .stat-card,
+    html[data-theme="dark"] .stat-card-staff,
+    html[data-theme="dark"] .filter-form {
+        background: linear-gradient(135deg, rgba(15, 12, 35, 0.95), rgba(8, 6, 20, 0.95)) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+    }
+
+    html[data-theme="dark"] table, 
+    html[data-theme="dark"] th, 
+    html[data-theme="dark"] td {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+
+    html[data-theme="dark"] th {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    html[data-theme="dark"] td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+
+    /* ==========================================================
+       ÉP MÀU CHÍNH XÁC CHO CHẾ ĐỘ SÁNG (LIGHT THEME) 
+       ========================================================== */
+    html[data-theme="light"] body {
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
+    }
+
+    html[data-theme="light"] .approval-box,
+    html[data-theme="light"] .stat-card,
+    html[data-theme="light"] .stat-card-staff,
+    html[data-theme="light"] .filter-form {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.95)) !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+        color: #1e293b !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    html[data-theme="light"] table, 
+    html[data-theme="light"] th, 
+    html[data-theme="light"] td {
+        color: #1e293b !important;
+        background-color: transparent !important;
+    }
+
+    html[data-theme="light"] th {
+        background-color: rgba(0, 0, 0, 0.05) !important;
+        color: #475569 !important;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.1) !important;
+    }
+
+    html[data-theme="light"] td {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    }
+
+    html[data-theme="light"] td.text-info {
+        color: #0284c7 !important; 
+    }
+
+    html[data-theme="light"] .filter-form select {
+        background: #ffffff !important;
+        color: #1e293b !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    }
+</style>
 </head>
 <body>
 
-<!-- 🌌 HIỆU ỨNG LOADING LÕI LƯỢNG TỬ 3D (CYBERPUNK REACTOR) -->
+    <!-- 🌌 HIỆU ỨNG LOADING LÕI LƯỢNG TỬ 3D (CYBERPUNK REACTOR) -->
     <div id="page-loader">
       <div class="shooting-star"></div>
       <div class="shooting-star"></div>
@@ -150,15 +251,16 @@ $classes = $stmt_classes->fetchAll();
         <div class="reactor-core-pulse"></div>
       </div>
       
-      <div class="loader-text">Khởi tạo hệ thống lượng tử Admin...</div>
+      <div class="loader-text">Khởi tạo hệ thống Admin...</div>
     </div>
-    <!-- 1. Chèn Video Background (tự động chạy lặp lại, tắt tiếng để trình duyệt cho phép tự phát) -->
+    
+    <!-- Video Background -->
     <video autoplay loop muted playsinline preload="auto" class="video-background">
         <source src="videos/video03.mp4" type="video/mp4">
         Trình duyệt của bạn không hỗ trợ video background.
     </video>
 
-    <div class="container py-4">
+    <div class="container py-3">
         <!-- HEADER -->
         <div class="header">
             <h2>🛠️ Trang Quản Trị Hệ Thống (Admin)</h2>
@@ -296,20 +398,8 @@ $classes = $stmt_classes->fetchAll();
             </div>
         </div>
 
-        <!-- BỘ LỌC CHỌN LỚP HỌC -->
-        <div class="filter-form">
-            <label><strong>Chọn lớp học:</strong></label>
-            <select onchange="location = 'dashboard.php?ma_lop=' + this.value;">
-                <?php foreach ($classes as $cls): ?>
-                    <option value="<?php echo htmlspecialchars($cls['ma_lop']); ?>" <?php echo ($cls['ma_lop'] === $selected_class) ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($cls['ma_lop']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
         <!-- 📊 THỐNG KÊ GRID -->
-        <div class="stats-grid">
+        <div class="stats-grid mb-4">
             <div class="stat-card">
                 <h3>📊 Thống kê lớp: <?php echo htmlspecialchars($selected_class); ?></h3>
                 <p class="mb-0">Tổng số sinh viên: <span class="fw-bold text-success"><?php echo $total_students; ?></span> người</p>
@@ -345,49 +435,65 @@ $classes = $stmt_classes->fetchAll();
             </div>
         </div>
 
-        <!-- DANH SÁCH SINH VIÊN -->
-        <h3 class="mb-3">📋 Danh sách sinh viên & Điểm rèn luyện</h3>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>STT</th>
-                        <th>Mã SV</th>
-                        <th>Họ và tên</th>
-                        <th>Email</th>
-                        <th>Sự kiện tháng này</th>
-                        <th>Điểm rèn luyện cộng</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (count($students) > 0): ?>
-                        <?php foreach ($students as $index => $sv): ?>
-                            <tr>
-                                <td><?php echo $index + 1; ?></td>
-                                <td><?php echo htmlspecialchars($sv['ma_sv']); ?></td>
-                                <td><strong><?php echo htmlspecialchars($sv['ho_ten']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($sv['email']); ?></td>
-                                <td>
-                                    <span class="badge bg-info text-dark rounded-pill fw-bold">
-                                        <?php echo $sv['so_su_kien_thang']; ?> sự kiện
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-warning text-dark rounded-pill fw-bold">
-                                        +<?php echo $sv['tong_diem_ren_luyen']; ?> điểm
-                                    </span>
-                                </td>
-                                <td><?php echo htmlspecialchars($sv['trang_thai'] ?? 'Đang học'); ?></td>
-                            </tr>
+        <!-- DANH SÁCH SINH VIÊN (KÈM BỘ LỌC CHỌN LỚP HỌC ĐƯỢC ĐẶT GỌN GÀNG TRÊN CÙNG) -->
+        <div class="approval-box">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h3 class="mb-0">📋 Danh sách sinh viên & Điểm rèn luyện</h3>
+                <!-- BỘ LỌC CHỌN LỚP HỌC -->
+                <div class="filter-form mb-0 p-2 d-inline-flex align-items-center gap-2">
+                    <label class="mb-0"><strong>Chọn lớp:</strong></label>
+                    <select onchange="location = 'dashboard.php?ma_lop=' + this.value;" class="form-select form-select-sm w-auto">
+                        <?php foreach ($classes as $cls): ?>
+                            <option value="<?php echo htmlspecialchars($cls['ma_lop']); ?>" <?php echo ($cls['ma_lop'] === $selected_class) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cls['ma_lop']); ?>
+                            </option>
                         <?php endforeach; ?>
-                    <?php else: ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
                         <tr>
-                            <td colspan="7" class="text-center py-3">Không có sinh viên nào trong lớp này.</td>
+                            <th>STT</th>
+                            <th>Mã SV</th>
+                            <th>Họ và tên</th>
+                            <th>Email</th>
+                            <th>Sự kiện tháng này</th>
+                            <th>Điểm rèn luyện cộng</th>
+                            <th>Trạng thái</th>
                         </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php if (count($students) > 0): ?>
+                            <?php foreach ($students as $index => $sv): ?>
+                                <tr>
+                                    <td><?php echo $index + 1; ?></td>
+                                    <td><?php echo htmlspecialchars($sv['ma_sv']); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($sv['ho_ten']); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($sv['email']); ?></td>
+                                    <td>
+                                        <span class="badge bg-info text-dark rounded-pill fw-bold">
+                                            <?php echo $sv['so_su_kien_thang']; ?> sự kiện
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark rounded-pill fw-bold">
+                                            +<?php echo $sv['tong_diem_ren_luyen']; ?> điểm
+                                        </span>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($sv['trang_thai'] ?? 'Đang học'); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center py-3">Không có sinh viên nào trong lớp này.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -460,7 +566,6 @@ $classes = $stmt_classes->fetchAll();
                 themeIcon.className = 'bi bi-moon-stars-fill';
             }
         }
-        
     </script>
 </body>
 </html>

@@ -319,7 +319,7 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
         // 🌌 HIỆU ỨNG LOADING CHẠY CHẬM ĐÚNG 2 GIÂY
         setTimeout(function() {
             hideLoader();
-        }, 2000);
+        }, 1500);
 
         function hideLoader() {
             const loader = document.getElementById('page-loader');
