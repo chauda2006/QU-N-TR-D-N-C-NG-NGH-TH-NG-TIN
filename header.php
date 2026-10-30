@@ -20,16 +20,16 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <ul>
                     <!-- Tự động thêm class active nếu đang ở file tương ứng -->
                     <li>
-                        <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/index.php">Trang chủ</a>
+                        <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/index.php">Trang chủ</a>
                     </li>
                     <li>
-                      <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/su-kien.php">Sự kiện</a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/su-kien.php">Sự kiện</a>
                     </li>
                     <li>
-                       <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/lich-su.php">Lịch sử</a>
+                       <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/lich-su.php">Lịch sử</a>
                     </li>
                     <li>
-                      <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/dang-ky.php">Đăng ký</a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/dang-ky.php">Đăng ký</a>
                     </li>
                 </ul>
             </nav>
