@@ -434,10 +434,6 @@ if (imagePath && !imagePath.startsWith('http') && !imagePath.startsWith('images/
             }
 
             eventList.appendChild(card);
-<<<<<<< HEAD
-        });
-=======
         }
 });
->>>>>>> origin/main
         
