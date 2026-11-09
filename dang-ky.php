@@ -3,6 +3,31 @@ session_start();
 ob_start();
 require_once 'database.php';
 
+function getEventRoomId(PDO $db, int $eventId)
+{
+    $stmt = $db->prepare("
+        SELECT dd.ten_diadiem
+        FROM su_kien sk
+        LEFT JOIN dia_diem dd ON sk.ma_diadiem = dd.ma_diadiem
+        WHERE sk.ma_sukien = :su_kien_id
+        LIMIT 1
+    ");
+    $stmt->execute([':su_kien_id' => $eventId]);
+    $eventRoomName = $stmt->fetchColumn();
+    if ($eventRoomName === false || trim((string)$eventRoomName) === '') {
+        return null;
+    }
+
+    $rooms = $db->query("SELECT id, ten_phong FROM phong_hoc")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rooms as $room) {
+        if (trim((string)$room['ten_phong']) === trim((string)$eventRoomName)) {
+            return (int)$room['id'];
+        }
+    }
+
+    return null;
+}
+
 // ==============================================================================
 // 1. API TRẢ VỀ SƠ ĐỒ GHẾ NGỒI (Đã bổ sung logic khóa ghế thường khi còn ghế VIP)
 // ==============================================================================
@@ -11,35 +36,68 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_seats') {
     $su_kien_id = isset($_GET['su_kien_id']) ? intval($_GET['su_kien_id']) : 0;
     
     if ($su_kien_id > 0) {
-        $sql_seats = "
-            SELECT g.id, g.hang, g.so_ghe, g.loai_ghe,
-                   IF(dg.id IS NULL, 0, 1) as is_booked
-            FROM ghe g
-            LEFT JOIN dat_ghe dg ON g.id = dg.ghe_id AND dg.su_kien_id = :su_kien_id AND dg.trang_thai = 'DA_DAT'
-            WHERE g.phong_id = 1
-            ORDER BY g.hang, g.so_ghe
-        ";
-        $stmt_seats = $conn->prepare($sql_seats);
-        $stmt_seats->execute([':su_kien_id' => $su_kien_id]);
-        $seats = $stmt_seats->fetchAll(PDO::FETCH_ASSOC);
-
-        // Đếm số ghế VIP còn trống
-        $vip_trong = 0;
-        foreach ($seats as $seat) {
-            if ($seat['loai_ghe'] == 'VIP' && $seat['is_booked'] == 0) {
-                $vip_trong++;
+        try {
+            $room_id = getEventRoomId($conn, $su_kien_id);
+            if (!$room_id) {
+            if (ob_get_length()) {
+                ob_clean();
             }
-        }
-
-        // Khóa các ghế thường nếu vẫn còn ghế VIP
-        foreach ($seats as &$seat) {
-            $seat['is_locked'] = 0;
-            if ($vip_trong > 0 && $seat['loai_ghe'] == 'THUONG') {
-                $seat['is_locked'] = 1;
+            echo json_encode(['error' => 'Không tìm thấy phòng sơ đồ ghế khớp với địa điểm sự kiện. Vui lòng kiểm tra tên phòng trong quản lý sự kiện và danh sách phòng.']);
+            exit;
             }
-        }
 
-        echo json_encode($seats);
+            $sql_seats = "
+                SELECT g.id, g.hang, g.so_ghe, g.loai_ghe,
+                       IF(dg.id IS NULL, 0, 1) as is_booked
+                FROM ghe g
+                LEFT JOIN dat_ghe dg ON g.id = dg.ghe_id AND dg.su_kien_id = :su_kien_id AND dg.trang_thai = 'DA_DAT'
+                WHERE g.phong_id = :room_id
+                ORDER BY g.hang, g.so_ghe
+            ";
+            $stmt_seats = $conn->prepare($sql_seats);
+            $stmt_seats->execute([':su_kien_id' => $su_kien_id, ':room_id' => $room_id]);
+            $seats = $stmt_seats->fetchAll(PDO::FETCH_ASSOC);
+            if (!$seats) {
+                if (ob_get_length()) {
+                    ob_clean();
+                }
+                echo json_encode([
+                    'error' => "Đã tìm thấy phòng ID {$room_id}, nhưng bảng ghe chưa có ghế nào cho phòng này. Hãy tạo ghế với đúng phong_id."
+                ]);
+                exit;
+            }
+
+            // Đếm số ghế VIP còn trống
+            $vip_trong = 0;
+            foreach ($seats as $seat) {
+                if ($seat['loai_ghe'] == 'VIP' && $seat['is_booked'] == 0) {
+                    $vip_trong++;
+                }
+            }
+
+            // Khóa các ghế thường nếu vẫn còn ghế VIP
+            foreach ($seats as &$seat) {
+                $seat['is_locked'] = 0;
+                if ($vip_trong > 0 && $seat['loai_ghe'] == 'THUONG') {
+                    $seat['is_locked'] = 1;
+                }
+            }
+            unset($seat);
+
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode($seats);
+        } catch (Throwable $e) {
+            error_log("Lỗi tải sơ đồ ghế cho sự kiện {$su_kien_id}: " . $e->getMessage());
+            http_response_code(500);
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode([
+                'error' => 'Không thể truy vấn sơ đồ ghế (SQLSTATE ' . htmlspecialchars((string)$e->getCode(), ENT_QUOTES, 'UTF-8') . '). Kiểm tra log PHP để xem chi tiết.'
+            ]);
+        }
     } else {
         echo json_encode([]);
     }
@@ -78,19 +136,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         try {
             $conn->beginTransaction();
 
-            // 1. Kiểm tra nếu chọn ghế thường thì đã hết ghế VIP chưa (Chống hack form)
-            $stmt_ghe_info = $conn->prepare("SELECT loai_ghe FROM ghe WHERE id = :ghe_id");
-            $stmt_ghe_info->execute([':ghe_id' => $ghe_id]);
-            $ghe_info = $stmt_ghe_info->fetch(PDO::FETCH_ASSOC);
+            $room_id = getEventRoomId($conn, $su_kien_id);
+            if (!$room_id) {
+                throw new Exception("Không tìm thấy phòng có sơ đồ ghế khớp với địa điểm sự kiện.");
+            }
 
+            // 1. Kiểm tra ghế thuộc đúng phòng của sự kiện.
+            $stmt_ghe_info = $conn->prepare("SELECT loai_ghe FROM ghe WHERE id = :ghe_id AND phong_id = :room_id");
+            $stmt_ghe_info->execute([':ghe_id' => $ghe_id, ':room_id' => $room_id]);
+            $ghe_info = $stmt_ghe_info->fetch(PDO::FETCH_ASSOC);
+            if (!$ghe_info) {
+                throw new Exception("Ghế đã chọn không thuộc phòng tổ chức của sự kiện.");
+            }
+
+            // 2. Kiểm tra nếu chọn ghế thường thì đã hết ghế VIP chưa.
             if ($ghe_info && $ghe_info['loai_ghe'] == 'THUONG') {
                 $stmt_check_vip = $conn->prepare("
                     SELECT COUNT(*) as vip_trong 
                     FROM ghe g 
                     LEFT JOIN dat_ghe dg ON g.id = dg.ghe_id AND dg.su_kien_id = :su_kien_id AND dg.trang_thai = 'DA_DAT' 
-                    WHERE g.phong_id = 1 AND g.loai_ghe = 'VIP' AND dg.id IS NULL
+                    WHERE g.phong_id = :room_id AND g.loai_ghe = 'VIP' AND dg.id IS NULL
                 ");
-                $stmt_check_vip->execute([':su_kien_id' => $su_kien_id]);
+                $stmt_check_vip->execute([':su_kien_id' => $su_kien_id, ':room_id' => $room_id]);
                 if ($stmt_check_vip->fetch(PDO::FETCH_ASSOC)['vip_trong'] > 0) {
                     throw new Exception("Vui lòng ưu tiên chọn các ghế VIP. Phải chọn hết ghế VIP mới được chọn ghế Thường!");
                 }
@@ -124,8 +191,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     throw new Exception("Bạn đã đăng ký tham gia sự kiện này rồi!");
                 }
             } else {
-                $stmt_insert = $conn->prepare("INSERT INTO dang_ky (user_id, su_kien_id, trang_thai) VALUES (:user_id, :su_kien_id, 'Đã đăng ký')");
-                $stmt_insert->execute([':user_id' => $user_id_hien_tai, ':su_kien_id' => $su_kien_id]);
+                $stmt_insert = $conn->prepare("
+                    INSERT INTO dang_ky (user_id, su_kien_id, ma_sukien, trang_thai)
+                    VALUES (:user_id, :su_kien_id, :ma_sukien, 'Đã đăng ký')
+                ");
+                $stmt_insert->execute([
+                    ':user_id' => $user_id_hien_tai,
+                    ':su_kien_id' => $su_kien_id,
+                    ':ma_sukien' => $su_kien_id,
+                ]);
             }
 
             // 5. Chốt ghế ngồi 
@@ -270,13 +344,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 seatInstruction.innerHTML = '<span class="spinner-border spinner-border-sm text-success"></span> Đang tải sơ đồ ghế...';
                 
                 fetch(`dang-ky.php?action=get_seats&su_kien_id=${eventId}`)
-                    .then(response => response.json())
+                    .then(async response => {
+                        const body = await response.text();
+                        let data;
+                        try {
+                            data = JSON.parse(body);
+                        } catch (error) {
+                            throw new Error(`Máy chủ trả về dữ liệu không hợp lệ (HTTP ${response.status}).`);
+                        }
+                        if (!response.ok) {
+                            throw new Error(data.error || `Không thể tải sơ đồ ghế (HTTP ${response.status}).`);
+                        }
+                        return data;
+                    })
                     .then(seats => {
                         seatGrid.innerHTML = '';
                         hiddenGheId.value = ''; 
+
+                        if (!Array.isArray(seats)) {
+                            seatInstruction.innerHTML = `<span class="text-danger">${seats.error || 'Không thể tải sơ đồ ghế cho sự kiện này.'}</span>`;
+                            seatInstruction.style.display = 'block';
+                            seatMapArea.style.display = 'none';
+                            return;
+                        }
                         
                         if (seats.length === 0) {
-                            seatInstruction.innerHTML = '<span class="text-danger">Không tìm thấy sơ đồ ghế cho sự kiện này.</span>';
+                            seatInstruction.innerHTML = '<span class="text-danger">Phòng tổ chức chưa được cấu hình sơ đồ ghế.</span>';
+                            seatInstruction.style.display = 'block';
                             seatMapArea.style.display = 'none';
                             return;
                         }
@@ -314,7 +408,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         seatMapArea.style.display = 'block';
                     })
                     .catch(error => {
-                        seatInstruction.innerHTML = '<span class="text-danger">Lỗi kết nối khi tải sơ đồ ghế.</span>';
+                        seatMapArea.style.display = 'none';
+                        seatInstruction.style.display = 'block';
+                        seatInstruction.textContent = error.message || 'Lỗi kết nối khi tải sơ đồ ghế.';
                     });
             }
 
