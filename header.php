@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
+
 <header class="site-header">
     <div class="header-container">
         <!-- Khối Logo và Tên Website -->

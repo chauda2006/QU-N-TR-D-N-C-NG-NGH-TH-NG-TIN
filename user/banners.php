@@ -19,11 +19,15 @@ try {
 }
 
 $msg = '';
+$editData = null;
 
-// Xử lý thêm banner mới (chỉ cần Tiêu đề và Ảnh)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_banner'])) {
+// Xử lý Thêm mới hoặc Cập nhật (Sửa)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title']);
-    
+    $edit_id = isset($_POST['edit_id']) ? intval($_POST['edit_id']) : 0;
+
+    // Kiểm tra nếu có upload ảnh mới
+    $imagePath = null;
     if (isset($_FILES['banner_image']) && $_FILES['banner_image']['error'] === 0) {
         $allowed = ['jpg', 'jpeg', 'png', 'webp'];
         $filename = $_FILES['banner_image']['name'];
@@ -41,22 +45,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_banner'])) {
 
             if (move_uploaded_file($filetmp, $destination)) {
                 $imagePath = 'uploads/banners/' . $newFilename;
-
-                $stmt = $pdo->prepare("INSERT INTO banners (title, image_url) VALUES (?, ?)");
-                $stmt->execute([$title, $imagePath]);
-                $msg = "Thêm banner thành công!";
-            } else {
-                $msg = "Lỗi khi lưu file hình ảnh.";
             }
-        } else {
-            $msg = "Chỉ chấp nhận định dạng ảnh jpg, jpeg, png, webp.";
         }
+    }
+
+    if ($edit_id > 0) {
+        // --- CHỨC NĂNG SỬA BANNER ---
+        if ($imagePath) {
+            // Nếu có đổi ảnh mới thì cập nhật cả tiêu đề lẫn ảnh
+            $stmt = $pdo->prepare("UPDATE banners SET title = ?, image_url = ? WHERE id = ?");
+            $stmt->execute([$title, $imagePath, $edit_id]);
+        } else {
+            // Nếu không đổi ảnh thì chỉ cập nhật tiêu đề
+            $stmt = $pdo->prepare("UPDATE banners SET title = ? WHERE id = ?");
+            $stmt->execute([$title, $edit_id]);
+        }
+        $msg = "Cập nhật banner thành công!";
     } else {
-        $msg = "Vui lòng chọn hình ảnh banner.";
+        // --- CHỨC NĂNG THÊM BANNER ---
+        if ($imagePath) {
+            $stmt = $pdo->prepare("INSERT INTO banners (title, image_url) VALUES (?, ?)");
+            $stmt->execute([$title, $imagePath]);
+            $msg = "Thêm banner thành công!";
+        } else {
+            $msg = "Vui lòng chọn hình ảnh banner hợp lệ!";
+        }
     }
 }
 
-// Xử lý xóa banner
+// Xử lý Xóa banner
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     $stmt = $pdo->prepare("SELECT image_url FROM banners WHERE id = ?");
@@ -72,6 +89,14 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
+// Nếu bấm nút Sửa, lấy thông tin cũ đổ lên form
+if (isset($_GET['edit'])) {
+    $editId = intval($_GET['edit']);
+    $stmtEdit = $pdo->prepare("SELECT * FROM banners WHERE id = ?");
+    $stmtEdit->execute([$editId]);
+    $editData = $stmtEdit->fetch(PDO::FETCH_ASSOC);
+}
+
 $banners = $pdo->query("SELECT * FROM banners ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -79,7 +104,7 @@ $banners = $pdo->query("SELECT * FROM banners ORDER BY id DESC")->fetchAll(PDO::
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Quản lý Banner</title>
+    <title>Quản lý Banner Slide Trang Chủ</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -91,25 +116,43 @@ $banners = $pdo->query("SELECT * FROM banners ORDER BY id DESC")->fetchAll(PDO::
             <div class="alert alert-info"><?= htmlspecialchars($msg) ?></div>
         <?php endif; ?>
 
-        <!-- Form Thêm Banner -->
+        <!-- Form Thêm / Sửa Banner -->
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-primary text-white">Thêm Banner Mới</div>
+            <div class="card-header bg-primary text-white">
+                <?= $editData ? 'Chỉnh sửa Banner (ID: ' . $editData['id'] . ')' : 'Thêm Banner Mới (Kích thước gợi ý: 1000 x 400 px)' ?>
+            </div>
             <div class="card-body">
                 <form action="" method="POST" enctype="multipart/form-data">
+                    <!-- Input ẩn lưu ID khi đang ở chế độ sửa -->
+                    <?php if ($editData): ?>
+                        <input type="hidden" name="edit_id" value="<?= $editData['id'] ?>">
+                    <?php endif; ?>
+
                     <div class="mb-3">
                         <label class="form-label">Tiêu đề Banner:</label>
-                        <input type="text" name="title" class="form-control" required placeholder="Nhập tiêu đề...">
+                        <input type="text" name="title" class="form-control" required placeholder="Nhập tiêu đề..." value="<?= $editData ? htmlspecialchars($editData['title']) : '' ?>">
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Hình ảnh Banner:</label>
-                        <input type="file" name="banner_image" class="form-control" accept="image/*" required>
+                        <label class="form-label">Hình ảnh Banner (Tỷ lệ chuẩn 1000x400px):</label>
+                        <?php if ($editData && !empty($editData['image_url'])): ?>
+                            <div class="mb-2">
+                                <img src="../<?= htmlspecialchars($editData['image_url']) ?>" alt="Current Banner" style="width: 200px; height: 80px; object-fit: cover;" class="rounded border">
+                                <br><small class="text-muted">Ảnh hiện tại (Chọn file mới bên dưới nếu muốn thay đổi)</small>
+                            </div>
+                        <?php endif; ?>
+                        <input type="file" name="banner_image" class="form-control" accept="image/*" <?= $editData ? '' : 'required' ?>>
                     </div>
-                    <button type="submit" name="add_banner" class="btn btn-success">Đăng Banner</button>
+
+                    <button type="submit" class="btn btn-success"><?= $editData ? 'Cập nhật Banner' : 'Đăng Banner' ?></button>
+                    <?php if ($editData): ?>
+                        <a href="banners.php" class="btn btn-secondary">Hủy bỏ</a>
+                    <?php endif; ?>
                 </form>
             </div>
         </div>
 
-        <!-- Danh sách Banner -->
+        <!-- Danh sách Banner hiện tại -->
         <div class="card shadow-sm">
             <div class="card-header bg-secondary text-white">Danh sách Banner hiện tại</div>
             <div class="card-body">
@@ -127,9 +170,10 @@ $banners = $pdo->query("SELECT * FROM banners ORDER BY id DESC")->fetchAll(PDO::
                             <?php foreach ($banners as $b): ?>
                             <tr>
                                 <td><?= $b['id'] ?></td>
-                                <td><img src="../<?= htmlspecialchars($b['image_url']) ?>" alt="Banner" style="width: 150px; height: 50px; object-fit: cover;" class="rounded"></td>
+                                <td><img src="../<?= htmlspecialchars($b['image_url']) ?>" alt="Banner" style="width: 150px; height: 60px; object-fit: cover;" class="rounded"></td>
                                 <td><strong><?= htmlspecialchars($b['title']) ?></strong></td>
                                 <td>
+                                    <a href="banners.php?edit=<?= $b['id'] ?>" class="btn btn-warning btn-sm text-white">Sửa</a>
                                     <a href="banners.php?delete=<?= $b['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa?')">Xóa</a>
                                 </td>
                             </tr>

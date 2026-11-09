@@ -193,16 +193,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['them_su_kien'])) {
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>📍 Địa điểm:</label>
-                    <input type="text" name="dia_diem" placeholder="Ví dụ: Hội trường A, Sân bóng...">
-                </div>
-                <div class="form-group">
-                    <label>📌 Vị trí cụ thể:</label>
-                    <input type="text" name="vi_tri" placeholder="Ví dụ: Tầng 2 - Tòa nhà trung tâm">
-                </div>
-            </div>
+<div class="form-group">
+    <label>📍 Địa điểm (*):</label>
+    <input type="text" name="dia_diem" required placeholder="Ví dụ: Hội trường A, Sân bóng...">
+</div>
+<div class="form-group">
+    <label>📌 Vị trí cụ thể (*):</label>
+    <input type="text" name="vi_tri" required placeholder="Ví dụ: Tầng 2 - Tòa nhà trung tâm">
+</div>
 
             <div class="form-row">
                 <div class="form-group">
