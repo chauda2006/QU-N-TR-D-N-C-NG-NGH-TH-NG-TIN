@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../database.php'; 
+$db_connection = isset($pdo) ? $pdo : (isset($conn) ? $conn : null);
 
 // 1. Kiểm tra đăng nhập và phân quyền
 if (!isset($_SESSION['vai_tro'])) {
@@ -58,8 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['them_su_kien'])) {
     if (empty($error)) {
         if (!empty($ten_input) && !empty($thoi_gian_bat_dau) && !empty($thoi_gian_ket_thuc)) {
             try {
-                $db_connection = isset($pdo) ?$pdo : (isset($conn) ?$conn : null);
-
                 if (!$db_connection) {
                     throw new Exception("Không tìm thấy kết nối CSDL hợp lệ!");
                 }
@@ -95,7 +94,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['them_su_kien'])) {
 
                 if (in_array('thoi_gian_bat_dau', $columns)) $insert_data['thoi_gian_bat_dau'] =$thoi_gian_bat_dau;
                 if (in_array('thoi_gian_ket_thuc', $columns)) $insert_data['thoi_gian_ket_thuc'] =$thoi_gian_ket_thuc;
-                if (in_array('dia_diem', $columns)) $insert_data['dia_diem'] =$dia_diem;
+                if (in_array('ma_diadiem', $columns)) {
+                    $ma_diadiem = null;
+                    if ($dia_diem !== '') {
+                        $stmt_location = $db_connection->prepare("SELECT ma_diadiem FROM dia_diem WHERE ten_diadiem = ? LIMIT 1");
+                        $stmt_location->execute([$dia_diem]);
+                        $location = $stmt_location->fetch(PDO::FETCH_ASSOC);
+                        if ($location) {
+                            $ma_diadiem = $location['ma_diadiem'];
+                        } else {
+                            $stmt_location = $db_connection->prepare("INSERT INTO dia_diem (ten_diadiem, vi_tri, suc_chua) VALUES (?, ?, ?)");
+                            $stmt_location->execute([$dia_diem, $vi_tri, $suc_chua]);
+                            $ma_diadiem = $db_connection->lastInsertId();
+                        }
+                    }
+                    $insert_data['ma_diadiem'] = $ma_diadiem;
+                } elseif (in_array('dia_diem', $columns)) {
+                    $insert_data['dia_diem'] = $dia_diem;
+                }
                 if (in_array('vi_tri', $columns)) $insert_data['vi_tri'] =$vi_tri;
                 if (in_array('doi_tuong_tham_gia', $columns)) $insert_data['doi_tuong_tham_gia'] =$doi_tuong_tham_gia;
                 if (in_array('suc_chua', $columns)) $insert_data['suc_chua'] =$suc_chua;
@@ -195,8 +211,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['them_su_kien'])) {
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>📍 Địa điểm:</label>
-                    <input type="text" name="dia_diem" placeholder="Ví dụ: Hội trường A, Sân bóng...">
+                    <label>📍 Phòng tổ chức:</label>
+                    <select name="dia_diem" class="form-control">
+                        <option value="">-- Chọn phòng tổ chức --</option>
+                        <?php
+                        try {
+                            $rooms = $db_connection->query("SELECT id, ten_phong FROM phong_hoc ORDER BY ten_phong")
+                                ->fetchAll(PDO::FETCH_ASSOC);
+                            foreach ($rooms as $room) {
+                                echo '<option value="' . htmlspecialchars($room['ten_phong'], ENT_QUOTES, 'UTF-8') . '">';
+                                echo htmlspecialchars($room['ten_phong'], ENT_QUOTES, 'UTF-8');
+                                echo '</option>';
+                            }
+                        } catch (Exception $e) {
+                            error_log("Không tải được danh sách phòng: " . $e->getMessage());
+                            echo '<option value="" disabled>Không tải được danh sách phòng</option>';
+                        }
+                        ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>📌 Vị trí cụ thể:</label>

@@ -171,18 +171,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             if (in_array('ma_diadiem', $existingColsLower)) {
-                $ma_diadiem_val = 1;
-                if (!empty($dia_diem_txt)) {
+                $ma_diadiem_val = null;
+                if ($dia_diem_txt !== '') {
                     $stmtCheckDD = $db->prepare("SELECT ma_diadiem FROM dia_diem WHERE ten_diadiem = ? LIMIT 1");
                     $stmtCheckDD->execute([$dia_diem_txt]);
                     $foundDD = $stmtCheckDD->fetch(PDO::FETCH_ASSOC);
-
-                    if ($foundDD) {
-                        $ma_diadiem_val = $foundDD['ma_diadiem'];
-                    } else {
+                    if (!$foundDD) {
                         $stmtInsDD = $db->prepare("INSERT INTO dia_diem (ten_diadiem, vi_tri, suc_chua) VALUES (?, ?, ?)");
                         $stmtInsDD->execute([$dia_diem_txt, $vi_tri, !empty($suc_chua) ? $suc_chua : 0]);
                         $ma_diadiem_val = $db->lastInsertId();
+                    } else {
+                        $ma_diadiem_val = $foundDD['ma_diadiem'];
                     }
                 }
                 $updateFields[] = "ma_diadiem = :ma_diadiem";
@@ -329,7 +328,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Địa điểm tổ chức:</label>
-                        <input type="text" name="dia_diem" class="form-control" value="<?php echo htmlspecialchars($val_location); ?>" placeholder="Ví dụ: Hội trường A">
+                        <select name="dia_diem" class="form-control bg-dark text-white border-info">
+            <option value="">-- Chọn phòng tổ chức --</option>
+            <?php
+            $roomLoadError = false;
+            try {
+                $rooms = $db->query("SELECT id, ten_phong FROM phong_hoc ORDER BY ten_phong")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+                $currentRoomExists = false;
+                foreach ($rooms as $room) {
+                    $selected = ((string)$val_location === (string)$room['ten_phong']) ? ' selected' : '';
+                    $currentRoomExists = $currentRoomExists || $selected !== '';
+                    echo '<option value="' . htmlspecialchars($room['ten_phong'], ENT_QUOTES, 'UTF-8') . '"' . $selected . '>';
+                    echo htmlspecialchars($room['ten_phong'], ENT_QUOTES, 'UTF-8');
+                    echo '</option>';
+                }
+                if ($val_location !== '' && !$currentRoomExists) {
+                    echo '<option value="' . htmlspecialchars($val_location, ENT_QUOTES, 'UTF-8') . '" selected>';
+                    echo htmlspecialchars($val_location, ENT_QUOTES, 'UTF-8') . ' (địa điểm hiện tại)';
+                    echo '</option>';
+                }
+            } catch (Exception $e) {
+                error_log("Không tải được danh sách phòng: " . $e->getMessage());
+                $roomLoadError = true;
+            }
+            ?>
+                        </select>
+                        <?php if ($roomLoadError): ?>
+            <div class="text-danger mt-1">Không tải được danh sách phòng. Vui lòng kiểm tra bảng phong_hoc.</div>
+                        <?php endif; ?>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Vị trí cụ thể:</label>

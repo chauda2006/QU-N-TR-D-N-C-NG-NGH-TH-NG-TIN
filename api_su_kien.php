@@ -215,8 +215,31 @@ case 'POST':
                 if (in_array('thoi_gian_bat_dau', $columns)) $insert_data['thoi_gian_bat_dau'] = str_replace('T', ' ', $data['thoi_gian_bat_dau'] ?? '');
                 if (in_array('thoi_gian_ket_thuc', $columns)) $insert_data['thoi_gian_ket_thuc'] = str_replace('T', ' ', $data['thoi_gian_ket_thuc'] ?? '');
                 if (in_array('mo_ta', $columns)) $insert_data['mo_ta'] = $data['mo_ta'] ?? null;
-                if (in_array('dia_diem', $columns)) $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
+                if (in_array('ma_diadiem', $columns)) {
+                    $ma_diadiem = null;
+                    $ten_diadiem = trim($data['dia_diem'] ?? '');
+                    if ($ten_diadiem !== '') {
+                        $stmt_location = $db->prepare("SELECT ma_diadiem FROM dia_diem WHERE ten_diadiem = ? LIMIT 1");
+                        $stmt_location->execute([$ten_diadiem]);
+                        $location = $stmt_location->fetch(PDO::FETCH_ASSOC);
+                        if ($location) {
+                            $ma_diadiem = $location['ma_diadiem'];
+                        } else {
+                            $stmt_location = $db->prepare("INSERT INTO dia_diem (ten_diadiem, vi_tri, suc_chua) VALUES (?, ?, ?)");
+                            $stmt_location->execute([
+                                $ten_diadiem,
+                                trim($data['vi_tri'] ?? ''),
+                                (int)($data['suc_chua'] ?? 0),
+                            ]);
+                            $ma_diadiem = $db->lastInsertId();
+                        }
+                    }
+                    $insert_data['ma_diadiem'] = $ma_diadiem;
+                } elseif (in_array('dia_diem', $columns)) {
+                    $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
+                }
                 if (in_array('vi_tri', $columns)) $insert_data['vi_tri'] = $data['vi_tri'] ?? null;
+                if (in_array('suc_chua', $columns)) $insert_data['suc_chua'] = $data['suc_chua'] ?? null;
                 
                 if (in_array($col_img, $columns) && $anh_cap_nhat !== null) {
                     $insert_data[$col_img] = $anh_cap_nhat;
