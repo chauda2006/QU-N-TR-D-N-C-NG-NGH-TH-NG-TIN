@@ -31,7 +31,7 @@ foreach ($events_list as $ev) {
 if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     // Truy vấn toàn bộ dữ liệu không phân trang/lọc để xuất file đầy đủ
     $stmt_export = $conn->prepare("
-        SELECT u.ma_sv, u.ho_ten, u.email, u.sdt, u.ma_lop, dk.ngay_dang_ky, dk.trang_thai
+        SELECT u.ma_sv, u.ho_ten, u.email, u.sdt, u.ma_lop, dk.ngay_dang_ky, dk.trang_thai, dk.vi_tri_diem_danh
         FROM dang_ky_su_kien dk
         JOIN users u ON dk.user_id = u.id
         WHERE dk.su_kien_id = ?
@@ -49,9 +49,9 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     // In bảng HTML dưới dạng Excel Table
     echo '<meta charset="UTF-8">';
     echo '<table border="1">';
-    echo '<tr><th colspan="7" style="background-color: #10b981; color: white; font-size: 16px;">DANH SÁCH THÔNG KÊ ĐĂNG KÝ SỰ KIỆN: ' . htmlspecialchars($current_event_name) . '</th></tr>';
+    echo '<tr><th colspan="8" style="background-color: #10b981; color: white; font-size: 16px;">DANH SÁCH THÔNG KÊ ĐĂNG KÝ SỰ KIỆN: ' . htmlspecialchars($current_event_name) . '</th></tr>';
     echo '<tr style="background-color: #f2f2f2; font-weight: bold;">';
-    echo '<th>STT</th><th>Mã Sinh Viên (MSSV)</th><th>Họ và Tên</th><th>Lớp</th><th>Email</th><th>Số Điện Thoại</th><th>Trạng Thái</th>';
+    echo '<th>STT</th><th>Mã Sinh Viên (MSSV)</th><th>Họ và Tên</th><th>Lớp</th><th>Email</th><th>Số Điện Thoại</th><th>Vị trí</th><th>Trạng Thái</th>';
     echo '</tr>';
 
     $i = 1;
@@ -70,6 +70,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
         echo '<td>' . htmlspecialchars($row['ma_lop'] ?? 'N/A') . '</td>';
         echo '<td>' . htmlspecialchars($row['email']) . '</td>';
         echo '<td>`' . htmlspecialchars($row['sdt'] ?? 'N/A') . '</td>';
+        echo '<td>' . htmlspecialchars($row['vi_tri_diem_danh'] ?? '---') . '</td>';
         echo '<td>' . $trang_thai_text . '</td>';
         echo '</tr>';
     }
@@ -92,7 +93,7 @@ $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'checked_in' => 
 
 // 📋 TRUY VẤN DANH SÁCH CHI TIẾT KÈM BỘ LỌC TRẠNG THÁI
 $sql_query = "
-    SELECT u.ma_sv, u.ho_ten, u.email, u.sdt, u.ma_lop, dk.ngay_dang_ky, dk.trang_thai
+    SELECT u.ma_sv, u.ho_ten, u.email, u.sdt, u.ma_lop, dk.ngay_dang_ky, dk.trang_thai, dk.vi_tri_diem_danh
     FROM dang_ky_su_kien dk
     JOIN users u ON dk.user_id = u.id
     WHERE dk.su_kien_id = ?
@@ -260,6 +261,7 @@ $registrations = $stmt_registrations->fetchAll(PDO::FETCH_ASSOC);
                             <th>Email</th>
                             <th>Số Điện Thoại</th>
                             <th>Thời Gian Đăng Ký</th>
+                            <th>Vị trí</th>
                             <th>Trạng Thái</th>
                         </tr>
                     </thead>
@@ -275,6 +277,17 @@ $registrations = $stmt_registrations->fetchAll(PDO::FETCH_ASSOC);
                                     <td><?php echo htmlspecialchars($reg['sdt'] ?? 'Chưa cập nhật'); ?></td>
                                     <td class="small text-muted"><?php echo !empty($reg['ngay_dang_ky']) ? date('d/m/Y H:i', strtotime($reg['ngay_dang_ky'])) : 'N/A'; ?></td>
                                     <td>
+                                        <?php if (!empty($reg['vi_tri_diem_danh'])): ?>
+                                            <?php if ($reg['vi_tri_diem_danh'] === 'BDU.Cm'): ?>
+                                                <span class="badge bg-info text-dark border border-info">BDU.Cm</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning text-dark border border-warning"><?php echo htmlspecialchars($reg['vi_tri_diem_danh']); ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">---</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <?php if ($reg['trang_thai'] === 'da_tham_gia' || $reg['trang_thai'] === 'present'): ?>
                                             <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Đã điểm danh</span>
                                         <?php elseif ($reg['trang_thai'] === 'da_huy' || $reg['trang_thai'] === 'cancelled'): ?>
@@ -287,7 +300,7 @@ $registrations = $stmt_registrations->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Không có sinh viên nào phù hợp với trạng thái này.</td>
+                                <td colspan="9" class="text-center py-4 text-muted">Không có sinh viên nào phù hợp với trạng thái này.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

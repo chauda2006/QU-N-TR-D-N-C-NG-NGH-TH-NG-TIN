@@ -29,16 +29,16 @@ $chat_link = $isAdmin ? '/QUAN-LY-SU-KIEN-SINH-VIEN/admin/quan_ly_tin_nhan.php' 
             <nav class="main-menu">
                 <ul>
                     <li>
-                        <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/index.php">Trang chủ</a>
+                        <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/index.php">Trang chủ</a>
                     </li>
                     <li>
-                      <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/su-kien.php">Sự kiện</a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/su-kien.php">Sự kiện</a>
                     </li>
                     <li>
-                       <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/lich-su.php">Lịch sử</a>
+                       <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/lich-su.php">Lịch sử</a>
                     </li>
                     <li>
-                      <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/dang-ky.php">Đăng ký</a>
+                      <a href="/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN/dang-ky.php">Đăng ký</a>
                     </li>
                     
                 </ul>

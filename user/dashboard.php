@@ -492,28 +492,54 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro) || $vai_tro
                         return;
                     }
 
-                    fetch('../api_checkin.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ event_id: eventId, passcode: passcode })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            Swal.fire({
-                                title: 'Thành công!',
-                                text: data.message,
-                                icon: 'success',
-                                confirmButtonText: 'Tuyệt vời'
-                            }).then(() => { window.location.reload(); });
-                        } else if (data.status === 'warning') {
-                            Swal.fire('Thông báo', data.message, 'warning').then(() => { myModal.hide(); });
-                        } else {
-                            Swal.fire('Lỗi', data.message, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến máy chủ điểm danh.', 'error');
+                    if (!navigator.geolocation) {
+                        Swal.fire('Không hỗ trợ vị trí', 'Trình duyệt của bạn không hỗ trợ xác định vị trí.', 'error');
+                        return;
+                    }
+
+                    btnCheckin.disabled = true;
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        fetch('../api_checkin.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                event_id: eventId,
+                                passcode: passcode,
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                Swal.fire({
+                                    title: 'Thành công!',
+                                    text: data.message,
+                                    icon: 'success',
+                                    confirmButtonText: 'Tuyệt vời'
+                                }).then(() => { window.location.reload(); });
+                            } else if (data.status === 'warning') {
+                                Swal.fire('Thông báo', data.message, 'warning').then(() => { myModal.hide(); });
+                            } else {
+                                Swal.fire('Lỗi', data.message, 'error');
+                            }
+                        })
+                        .catch(() => {
+                            Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến máy chủ điểm danh.', 'error');
+                        })
+                        .finally(() => {
+                            btnCheckin.disabled = false;
+                        });
+                    }, function(error) {
+                        const message = error.code === error.PERMISSION_DENIED
+                            ? 'Vui lòng cho phép truy cập vị trí để điểm danh.'
+                            : 'Không thể lấy vị trí hiện tại. Vui lòng bật GPS và thử lại.';
+                        Swal.fire('Không lấy được vị trí', message, 'error');
+                        btnCheckin.disabled = false;
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 0
                     });
                 });
             }

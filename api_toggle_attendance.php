@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/attendance_date.php';
 
 if (!isset($pdo) && isset($conn)) {
     $pdo = $conn;
@@ -33,6 +34,32 @@ $expiredAt = date('Y-m-d H:i:s', strtotime('+5 minutes')); // Hết hạn sau 5 
 $updated = false;
 
 if ($action === 'open_attendance') {
+    $eventStartTime = null;
+    $eventFound = false;
+    foreach (['ma_sukien', 'id', 'ma_su_kien', 'id_su_kien', 'su_kien_id'] as $col) {
+        if (!in_array($col, $columns, true)) {
+            continue;
+        }
+        try {
+            $stmtEvent = $pdo->prepare("SELECT thoi_gian_bat_dau FROM su_kien WHERE $col = ?");
+            $stmtEvent->execute([$eventId]);
+            $eventStartTime = $stmtEvent->fetchColumn();
+            if ($eventStartTime !== false) {
+                $eventFound = true;
+                break;
+            }
+        } catch (PDOException $e) {}
+    }
+
+    if (!$eventFound) {
+        echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy sự kiện.']);
+        exit;
+    }
+    if (!isAttendanceDateAllowed($eventStartTime)) {
+        echo json_encode(['status' => 'error', 'message' => 'Chỉ có thể mở passcode cho sự kiện diễn ra từ hôm qua trở đi.']);
+        exit;
+    }
+
     // Thử cập nhật qua từng cột tồn tại trong bảng
     foreach ($columns as $col) {
         try {
