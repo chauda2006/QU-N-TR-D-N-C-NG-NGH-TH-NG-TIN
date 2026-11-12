@@ -82,11 +82,13 @@ if ($id) {
     <title>Xóa sự kiện - Quản Lý Vũ Trụ</title>
     <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
     <!-- CSS Vũ Trụ 3D -->
-    <link rel="stylesheet" href="../css/user-delete.css">
+     
+    <link rel="stylesheet" href="../css/user-delete.css?v=<?php echo time(); ?>">
     <!-- SweetAlert2 (Popup Vũ Trụ 3D) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
 </head>
 <body>
     <!-- LỚP HẠT SAO VÀ BÁNH RĂNG ĐỘNG CƠ CÔNG NGHỆ 3D -->

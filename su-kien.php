@@ -1,5 +1,13 @@
 <?php
 session_start();
+
+// Kiểm tra trạng thái đăng nhập linh hoạt theo các biến session phổ biến trong hệ thống
+$isLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['ma_sv']) || isset($_SESSION['user']) || isset($_SESSION['hovaten']);
+$vaiTro = $_SESSION['vai_tro'] ?? ($_SESSION['user']['role'] ?? 'sinh_vien');
+$isAdmin = ($vaiTro === 'admin' || $vaiTro === 'quan_ly_su_kien');
+
+// Phân hướng đường dẫn chat tùy theo vai trò: Admin vào quản lý tin nhắn, sinh viên vào khung chat cá nhân
+$chat_link = $isAdmin ? "user/quan_ly_tin_nhan.php" : "user/chat.php";
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -15,6 +23,28 @@ session_start();
     <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" type="text/css" href="./css/THANH-LOC.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" type="text/css" href="./css/button-event.css?v=<?php echo time(); ?>">
+    <style>
+        /* 🌌 HIỆU ỨNG NÚT PHẢN HỒI 3D NEON */
+        .btn-space-feedback {
+            background: linear-gradient(135deg, #05ffa1 0%, #047857 100%) !important;
+            color: #030008 !important;
+            font-weight: 800 !important;
+            padding: 10px 20px !important;
+            border-radius: 12px !important;
+            border: none !important;
+            box-shadow: 0 0 20px rgba(5, 255, 161, 0.4) !important;
+            text-decoration: none !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-space-feedback:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(5, 255, 161, 0.8) !important;
+            color: #030008 !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -29,15 +59,24 @@ session_start();
 
     <?php include_once 'header.php'; ?>
 
-    <!-- Hiển thị cụm nút quản lý sự kiện và Thống kê nếu là Quản lý sự kiện hoặc Admin -->
-    <?php if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')): ?>
-    <div style="text-align: right; margin: 20px 20px 0 0; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+    <!-- Hiển thị cụm nút chức năng: Phản hồi hiển thị cho mọi tài khoản đăng nhập, các nút quản lý dành riêng cho Quản lý/Admin -->
+    <div style="text-align: right; margin: 20px 20px 0 0; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; align-items: center;">
+        
+        <!-- Nút Phản hồi & Hỗ trợ hiển thị cho CẢ SINH VIÊN VÀ QUẢN LÝ -->
+        <?php if ($isLoggedIn): ?>
+        <a href="<?php echo $chat_link; ?>" class="btn-space-feedback">
+            <i class="bi bi-chat-heart-fill"></i> <?php echo $isAdmin ? 'Trung tâm Phản hồi (Admin)' : 'Phản hồi & Hỗ trợ'; ?>
+        </a>
+        <?php endif; ?>
+
+        <!-- Các nút quản lý sự kiện (Chỉ dành cho Quản lý sự kiện hoặc Admin) -->
+        <?php if ($isAdmin): ?>
         <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
             <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
         </a>
         <!-- Nút Xóa sự kiện -->
         <a href="user/delete.php" class="btn-space-danger">
-            <i class="bi bi-gear-fill"></i> Xóa
+            <i class="bi bi-trash-fill"></i> Xóa
         </a>
         <!-- Nút Sửa sự kiện -->
         <a href="user/xuly_sua.php" class="btn-space-warning">
@@ -47,8 +86,8 @@ session_start();
         <a href="user/thong_ke_dang_ky.php" class="btn-space-stats">
             <i class="bi bi-bar-chart-fill"></i> Thống kê người đăng ký
         </a>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
 
     <main class="container-fluid event-container">
         <h1 class="text-center text-uppercase event-heading">
@@ -183,7 +222,7 @@ session_start();
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
+        const canManageEvents = <?php echo ($isAdmin) ? 'true' : 'false'; ?>;
     </script>
     <script>
     document.addEventListener("DOMContentLoaded", function () {

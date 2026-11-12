@@ -4,12 +4,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $current_page = basename($_SERVER['PHP_SELF']);
+$isAdmin = (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) || 
+           (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'admin' || $_SESSION['vai_tro'] === 'quan_ly_su_kien')) ||
+           (isset($_SESSION['user']) && is_array($_SESSION['user']) && isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin');
+$isLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['username']);
+
+// Phân hướng trang chat tùy theo phân quyền người dùng
+$chat_link = $isAdmin ? '/QUAN-LY-SU-KIEN-SINH-VIEN/admin/quan_ly_tin_nhan.php' : '/QUAN-LY-SU-KIEN-SINH-VIEN/user/chat.php';
 ?>
+
+<!-- Nhúng Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
 <header class="site-header">
     <div class="header-container">
         <!-- Khối Logo và Tên Website -->
-        <a href="index.php" class="brand-area">
+        <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/index.php" class="brand-area">
             <img src="./images/logo.png" alt="Logo" class="main-logo" onerror="this.style.display='none'">
             <span class="site-title">Student Event Management</span>
         </a>
@@ -30,16 +40,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <li>
                       <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/dang-ky.php">Đăng ký</a>
                     </li>
+                    
                 </ul>
             </nav>
 
             <!-- KHU VỰC CÁC NÚT: Cấu trúc xếp dọc hoàn toàn (Flex-direction: column) -->
             <div class="header-actions-vertical">
                 <?php 
-                $isAdmin = (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) || 
-                           (isset($_SESSION['user']) && is_array($_SESSION['user']) && isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin');
-                $isLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['username']);
-                
                 // Lấy tên người dùng từ session
                 $ten_nguoi_dung = $_SESSION['username'] ?? $_SESSION['ho_ten'] ?? 'Tài khoản';
                 // Lấy chữ cái đầu tiên của tên (xử lý Unicode tiếng Việt chuẩn)
@@ -48,26 +55,26 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
                 <!-- 1. Nút Đăng nhập / Tài khoản (Tích hợp Avatar Chữ cái & Tên cùng một hàng ngang) -->
                 <?php if ($isLoggedIn): ?>
-                    <a href="user/dashboard.php" class="btn-custom-3d btn-user-login btn-user-account-custom">
+                    <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/user/dashboard.php" class="btn-custom-3d btn-user-login btn-user-account-custom">
                         <div class="user-avatar-circle">
                             <span><?php echo $chu_cai_dau; ?></span>
                         </div>
                         <span class="user-name-text"><?php echo htmlspecialchars($ten_nguoi_dung); ?></span>
                     </a>
                 <?php else: ?>
-                    <a href="user/login.php" class="btn-custom-3d btn-user-login">👤 Đăng nhập</a>
+                    <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/user/login.php" class="btn-custom-3d btn-user-login">👤 Đăng nhập</a>
                 <?php endif; ?>
 
                 <!-- 2. Nút Admin -->
                 <?php if ($isAdmin): ?>
-                    <a href="admin/dashboard.php" class="btn-custom-3d btn-admin-nav">⚙ Quản Trị</a>
+                    <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/admin/dashboard.php" class="btn-custom-3d btn-admin-nav">⚙ Quản Trị</a>
                 <?php else: ?>
-                    <a href="admin/dashboard.php" class="btn-custom-3d btn-admin-login">⚙ Quản Trị</a>
+                    <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/admin/dashboard.php" class="btn-custom-3d btn-admin-login">⚙ Quản Trị</a>
                 <?php endif; ?>
 
                 <!-- 3. Nút Đăng xuất (Nằm ở dưới cùng khi người dùng đã đăng nhập) -->
                 <?php if ($isLoggedIn): ?>
-                    <a href="user/logout.php" class="btn-custom-3d btn-user-logout">Đăng xuất</a>
+                    <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/user/logout.php" class="btn-custom-3d btn-user-logout">Đăng xuất</a>
                 <?php endif; ?>
             </div>
 
@@ -75,9 +82,53 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 </header>
 
-<!-- CSS CHUẨN XÁC 100%: KHẮC PHỤC TRIỆT ĐỂ LỖI RỚT DÒNG AVATAR & TÊN -->
+<!-- CSS CHUẨN XÁC 100%: TÔNG ĐỎ & XANH LỤC NEON, KHẮC PHỤC TRIỆT ĐỂ RỚT DÒNG -->
 <style>
-    
+/* Nút Tin nhắn Phản hồi trên thanh Menu */
+.nav-chat-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: linear-gradient(135deg, rgba(255, 42, 109, 0.2), rgba(5, 255, 161, 0.2)) !important;
+    border: 1.5px solid rgba(5, 255, 161, 0.5) !important;
+    border-radius: 50rem !important;
+    padding: 6px 14px !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    position: relative !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 0 12px rgba(5, 255, 161, 0.25) !important;
+    text-decoration: none !important;
+}
+
+.nav-chat-btn:hover, .nav-chat-btn.active {
+    background: linear-gradient(135deg, rgba(255, 42, 109, 0.85), rgba(5, 255, 161, 0.45)) !important;
+    border-color: #05ffa1 !important;
+    box-shadow: 0 0 20px rgba(5, 255, 161, 0.7), 0 0 10px rgba(255, 42, 109, 0.5) !important;
+    transform: translateY(-2px);
+}
+
+.chat-icon-neon {
+    color: #05ffa1 !important;
+    font-size: 15px !important;
+    filter: drop-shadow(0 0 5px rgba(5, 255, 161, 0.8));
+}
+
+.chat-pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #ff2a6d;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff2a6d, 0 0 12px #ff2a6d;
+    animation: pulseNeonDot 1.5s infinite;
+}
+
+@keyframes pulseNeonDot {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
+
 /* Ép toàn bộ khối chứa nút xếp thành 1 cột dọc */
 .header-actions-vertical {
   display: flex !important;
@@ -123,19 +174,19 @@ $current_page = basename($_SERVER['PHP_SELF']);
   text-transform: none !important;
 }
 
-/* Vòng tròn Avatar chứa chữ cái đầu tiên */
+/* Vòng tròn Avatar chứa chữ cái đầu tiên (Xanh Lục Neon) */
 .user-avatar-circle {
   width: 30px !important;
   height: 30px !important;
   min-width: 30px !important;
   min-height: 30px !important;
-  background: radial-gradient(circle, #05ffe1 0%, #0284c7 100%) !important;
+  background: radial-gradient(circle, #05ffa1 0%, #047857 100%) !important;
   border: 1.5px solid #ffffff !important;
   border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 0 10px rgba(5, 255, 225, 0.8) !important;
+  box-shadow: 0 0 12px rgba(5, 255, 161, 0.9) !important;
   flex-shrink: 0 !important;
   margin: 0 !important;
 }
@@ -160,29 +211,29 @@ $current_page = basename($_SERVER['PHP_SELF']);
   line-height: 1.2 !important;
 }
 
-/* Nút Đăng nhập / Tài khoản / Admin (Màu Đỏ - Xanh lục 3D) */
+/* Nút Đăng nhập / Tài khoản / Admin (Màu Đỏ Hồng - Xanh Lục Neon 3D) */
 .btn-user-login, .btn-admin-nav, .btn-admin-login {
-  background: linear-gradient(135deg, #e11d48 0%, #059669 100%);
-  box-shadow: 0 4px 0 #047857, 0 6px 12px rgba(5, 150, 105, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #ff2a6d 0%, #059669 100%);
+  box-shadow: 0 4px 0 #047857, 0 6px 12px rgba(5, 255, 161, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.35);
 }
 .btn-user-login:hover, .btn-admin-nav:hover, .btn-admin-login:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 0 #047857, 0 10px 16px rgba(5, 150, 105, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 0 #047857, 0 10px 16px rgba(5, 255, 161, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.45);
 }
 .btn-user-login:active, .btn-admin-nav:active, .btn-admin-login:active {
   transform: translateY(2px);
-  box-shadow: 0 2px 0 #047857, 0 3px 6px rgba(5, 150, 105, 0.3), inset 0 1px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 0 #047857, 0 3px 6px rgba(5, 255, 161, 0.3), inset 0 1px 0 rgba(0, 0, 0, 0.2);
 }
 
 /* Nút Đăng xuất (Màu Đỏ tươi 3D nằm dưới cùng) */
 .btn-user-logout {
-  background: linear-gradient(180deg, #ff4b4b 0%, #dc2626 100%);
-  box-shadow: 0 4px 0 #991b1b, 0 6px 12px rgba(220, 38, 38, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  background: linear-gradient(180deg, #ff2a6d 0%, #dc2626 100%);
+  box-shadow: 0 4px 0 #991b1b, 0 6px 12px rgba(255, 42, 109, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.35);
 }
 .btn-user-logout:hover {
   transform: translateY(-2px);
-  background: linear-gradient(180deg, #ff5c5c 0%, #ef4444 100%);
-  box-shadow: 0 6px 0 #991b1b, 0 10px 16px rgba(239, 68, 68, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, #ff4d85 0%, #ef4444 100%);
+  box-shadow: 0 6px 0 #991b1b, 0 10px 16px rgba(255, 42, 109, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.45);
 }
 .btn-user-logout:active {
   transform: translateY(2px);
@@ -221,4 +272,4 @@ $current_page = basename($_SERVER['PHP_SELF']);
         });
     });
 </script>
-<script src="js/heder.js"></script>
+<script src="/QUAN-LY-SU-KIEN-SINH-VIEN/js/heder.js"></script>

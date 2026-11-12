@@ -1,9 +1,13 @@
 <?php
 // Bắt đầu session
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Kết nối cơ sở dữ liệu từ thư mục gốc
-include '../database.php';
+require_once __DIR__ . '/../database.php';
+
+/** @var PDO|null $conn */
 $conn = $conn ?? $pdo ?? null;
 
 // Lấy thông tin mã sinh viên và id từ session đăng nhập
@@ -21,9 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $ten_clb = $_POST['ten_clb'] ?? '';
     $ly_do_nang_cap = $_POST['ly_do_nang_cap'] ?? '';
 
-    if (!empty($chuc_vu_mong_muon) && !empty($ten_clb) && !empty($ly_do_nang_cap)) {
+    if (!empty($chuc_vu_mong_muon) && !empty($ten_clb) && !empty($ly_do_nang_cap) && $conn instanceof PDO) {
         try {
-            // Khi gửi lại yêu cầu, đồng thời đưa vai trò về lại sinh_vien và yêu cầu là pending
             $stmt_update = $conn->prepare("UPDATE users SET vai_tro = 'sinh_vien', yeu_cau_phan_quyen = 'pending', chuc_vu_mong_muon = ?, ten_clb = ?, ly_do_nang_cap = ? WHERE ma_sv = ?");
             $stmt_update->execute([$chuc_vu_mong_muon, $ten_clb, $ly_do_nang_cap, $ma_sv]);
             $message = "Gửi yêu cầu thành công! Vui lòng chờ Admin phê duyệt.";
@@ -36,9 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // Truy vấn lại thông tin người dùng mới nhất từ CSDL
-$stmt = $conn->prepare("SELECT * FROM users WHERE ma_sv = ?");
-$stmt->execute([$ma_sv]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$user = [];
+if ($conn instanceof PDO) {
+    $stmt = $conn->prepare("SELECT * FROM users WHERE ma_sv = ?");
+    $stmt->execute([$ma_sv]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+}
 
 $vai_tro = $user['vai_tro'] ?? 'sinh_vien';
 $yeu_cau = $user['yeu_cau_phan_quyen'] ?? 'none';
@@ -49,24 +55,25 @@ $ly_do_cu = $user['ly_do_nang_cap'] ?? '';
 // 🔔 TRUY VẤN DANH SÁCH THÔNG BÁO TỪ BẢNG thong_bao
 $list_thong_bao = [];
 $latest_notif_id = 0;
-try {
-    $stmt_tb_list = $conn->query("SELECT * FROM thong_bao ORDER BY ngay_tao DESC LIMIT 5");
-    if ($stmt_tb_list) {
-        $list_thong_bao = $stmt_tb_list->fetchAll(PDO::FETCH_ASSOC);
-        if (!empty($list_thong_bao)) {
-            $latest_notif_id = $list_thong_bao[0]['id']; // Lấy ID của thông báo mới nhất
+if ($conn instanceof PDO) {
+    try {
+        $stmt_tb_list = $conn->query("SELECT * FROM thong_bao ORDER BY ngay_tao DESC LIMIT 5");
+        if ($stmt_tb_list) {
+            $list_thong_bao = $stmt_tb_list->fetchAll(PDO::FETCH_ASSOC);
+            if (!empty($list_thong_bao)) {
+                $latest_notif_id = $list_thong_bao[0]['id'];
+            }
         }
+    } catch (Exception $e) {
+        // Bỏ qua lỗi nếu bảng thong_bao chưa được tạo
     }
-} catch (Exception $e) {
-    // Bỏ qua lỗi nếu bảng thong_bao chưa được tạo
 }
 
-// Kiểm tra có thông báo sự kiện hoặc trạng thái duyệt quyền hay không
 $has_notification = (count($list_thong_bao) > 0) || ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
 
 // Kiểm tra sự kiện đang mở điểm danh 
 $active_event = null;
-if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro) || $vai_tro === 'rejected')) {
+if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro) || $vai_tro === 'rejected') && $conn instanceof PDO) {
     $stmt_active = $conn->prepare("
         SELECT sk.* FROM su_kien sk
         LEFT JOIN dang_ky_su_kien dk ON sk.ma_sukien = dk.su_kien_id AND dk.user_id = ?
@@ -241,7 +248,11 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro) || $vai_tro
                 <button class="theme-toggle-btn me-2" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng/Tối">
                   <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
                 </button>
-                <a href="banners.php" class="btn btn-primary me-2">Quản lý Banner</a>
+                
+                <!-- 🔒 PHÂN QUYỀN: CHỈ HIỆN NÚT QUẢN LÝ BANNER CHO ADMIN HOẶC QUẢN LÝ SỰ KIỆN -->
+                <?php if ($vai_tro === 'admin' || $vai_tro === 'quan_ly_su_kien'): ?>
+                    <a href="banners.php" class="btn btn-primary me-2">Quản lý Banner</a>
+                <?php endif; ?>
 
                 <!-- 🔔 DROPDOWN THÔNG BÁO CHUẨN BOOTSTRAP VÀ CÂN ĐỐI BADGE -->
                 <div class="dropdown me-2" style="z-index: 99999;">
