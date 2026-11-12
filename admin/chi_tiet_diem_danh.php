@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../database.php';
+require_once __DIR__ . '/../attendance_date.php';
 
 // Hỗ trợ nhận diện mọi tên biến kết nối từ database.php ($pdo, $conn, $db)
 if (!isset($pdo)) {
@@ -35,6 +36,7 @@ foreach ($possibleColumns as $col) {
 if (!$event) {
     die("Không tìm thấy thông tin sự kiện trong cơ sở dữ liệu.");
 }
+$canOpenAttendance = isAttendanceDateAllowed($event['thoi_gian_bat_dau'] ?? null);
 
 $message = "";
 $message_type = "";
@@ -44,18 +46,23 @@ if (isset($_POST['btn_toggle_attendance'])) {
     $action = $_POST['action'] ?? '';
     
     if ($action == 'open') {
-        $passcode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiredAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-        
-        foreach ($possibleColumns as $col) {
-            try {
-                $stmtUpdate = $pdo->prepare("UPDATE su_kien SET is_attendance_open = 1, passcode = ?, passcode_expired_at = ? WHERE $col = ?");
-                $stmtUpdate->execute([$passcode, $expiredAt, $eventId]);
-                break;
-            } catch (PDOException $e) {}
+        if (!$canOpenAttendance) {
+            $message = "Chỉ có thể mở passcode cho sự kiện diễn ra từ hôm qua trở đi.";
+            $message_type = "warning";
+        } else {
+            $passcode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiredAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+            
+            foreach ($possibleColumns as $col) {
+                try {
+                    $stmtUpdate = $pdo->prepare("UPDATE su_kien SET is_attendance_open = 1, passcode = ?, passcode_expired_at = ? WHERE $col = ?");
+                    $stmtUpdate->execute([$passcode, $expiredAt, $eventId]);
+                    break;
+                } catch (PDOException $e) {}
+            }
+            $message = "Đã mở điểm danh thành công! Mã Passcode mới: <strong class='text-warning fs-4'>$passcode</strong> (Hiệu lực trong 5 phút).";
+            $message_type = "success";
         }
-        $message = "Đã mở điểm danh thành công! Mã Passcode mới: <strong class='text-warning fs-4'>$passcode</strong> (Hiệu lực trong 5 phút).";
-        $message_type = "success";
     } else {
         foreach ($possibleColumns as $col) {
             try {
@@ -183,10 +190,14 @@ try {
                                     <button type="submit" name="btn_toggle_attendance" class="btn btn-danger w-100 fw-bold py-3 shadow-sm">
                                         <i class="bi bi-stop-circle me-1"></i> Đóng Điểm Danh
                                     </button>
-                                <?php else: ?>
+                                <?php elseif ($canOpenAttendance): ?>
                                     <input type="hidden" name="action" value="open">
                                     <button type="submit" name="btn_toggle_attendance" class="btn btn-neon-success w-100 py-3 shadow-sm">
                                         <i class="bi bi-play-circle me-1"></i> Mở Điểm Danh (Tạo Passcode)
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-secondary w-100 py-3 shadow-sm" disabled>
+                                        <i class="bi bi-lock-fill me-1"></i> Sự kiện đã diễn ra quá 1 ngày
                                     </button>
                                 <?php endif; ?>
                             </form>
@@ -204,6 +215,8 @@ try {
                                     <th>STT</th>
                                     <th>Họ Tên</th>
                                     <th>Mã Sinh Viên</th>
+                                    <!-- THÊM CỘT VỊ TRÍ Ở ĐÂY -->
+                                    <th>Vị Trí</th>
                                     <th>Trạng Thái</th>
                                     <th>Thời Gian Điểm Danh</th>
                                 </tr>
@@ -213,12 +226,25 @@ try {
                                     <?php foreach ($registrations as $index => $reg): ?>
                                         <tr class="text-light">
                                             <td><?php echo $index + 1; ?></td>
-                                            <!-- SỬA LỖI TÊN BIẾN HIỂN THỊ DỮ LIỆU -->
                                             <td class="fw-bold"><?php echo htmlspecialchars($reg['ho_ten'] ?? 'Chưa cập nhật'); ?></td>
                                             <td><?php echo htmlspecialchars($reg['ma_sv'] ?? 'Chưa cập nhật'); ?></td>
+                                            
+                                            <!-- CỘT HIỂN THỊ VỊ TRÍ (MỚI) -->
+                                            <td>
+                                                <?php if (!empty($reg['vi_tri_diem_danh'])): ?>
+                                                    <?php if ($reg['vi_tri_diem_danh'] == 'BDU.Cm'): ?>
+                                                        <span class="badge bg-info text-dark border border-info">BDU.Cm</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark border border-warning"><?php echo htmlspecialchars($reg['vi_tri_diem_danh']); ?></span>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="text-light opacity-50">---</span>
+                                                <?php endif; ?>
+                                            </td>
+
+                                            <!-- CỘT HIỂN THỊ TRẠNG THÁI -->
                                             <td>
                                                 <?php 
-                                                    // Kiểm tra đồng thời trạng thái của bảng dang_ky và dang_ky_su_kien
                                                     $is_present = (
                                                         (isset($reg['status_attendance']) && $reg['status_attendance'] === 'present') || 
                                                         (isset($reg['trang_thai']) && $reg['trang_thai'] === 'da_tham_gia')
@@ -235,7 +261,7 @@ try {
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="5" class="text-center text-light opacity-75 py-4">Chưa có sinh viên nào đăng ký tham gia hoặc điểm danh sự kiện này.</td>
+                                        <td colspan="6" class="text-center text-light opacity-75 py-4">Chưa có sinh viên nào đăng ký tham gia hoặc điểm danh sự kiện này.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -244,7 +270,6 @@ try {
                 </div>
 
                 <div class="mt-4 text-center">
-                    <!-- Bạn có thể sửa URL nút Quay lại nếu cần -->
                     <a href="dashboard.php" class="btn btn-outline-light px-4 py-2">
                         <i class="bi bi-arrow-left me-1"></i> Quay lại Dashboard
                     </a>

@@ -5,6 +5,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/check_admin.php'; // Kiểm tra quyền admin
 require_once __DIR__ . '/../database.php';   // Kết nối CSDL
+require_once __DIR__ . '/../attendance_date.php';
 
 /** @var PDO $conn */
 
@@ -29,6 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
     if ($eventId !== '') {
         try {
             if ($action === 'open') {
+                $stmt_event = $conn->prepare("SELECT thoi_gian_bat_dau FROM su_kien WHERE ma_sukien = ?");
+                $stmt_event->execute([$eventId]);
+                $event_start_time = $stmt_event->fetchColumn();
+                if (!isAttendanceDateAllowed($event_start_time)) {
+                    header("Location: dashboard.php?attendance_error=outside_window");
+                    exit();
+                }
+
                 $passcode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
                 $expiredAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
                 $stmt_update = $conn->prepare("UPDATE su_kien SET is_attendance_open = 1, passcode = ?, passcode_expired_at = ? WHERE ma_sukien = ?");
@@ -358,6 +367,9 @@ $classes = $stmt_classes->fetchAll();
             <h3 class="text-success mb-3 fw-bold">
                 <i class="bi bi-shield-lock-fill me-2"></i> Quản lý Điểm Danh Sự Kiện (Mã Passcode 5 phút)
             </h3>
+            <?php if (($_GET['attendance_error'] ?? '') === 'outside_window'): ?>
+                <div class="alert alert-warning">Chỉ có thể mở passcode cho sự kiện diễn ra từ hôm qua trở đi.</div>
+            <?php endif; ?>
             
             <div class="table-responsive">
                 <table class="table align-middle text-center mb-0">
@@ -379,6 +391,7 @@ $classes = $stmt_classes->fetchAll();
                                     $eventTitle = $ev['ten_sukien'] ?? 'Sự kiện chưa có tên'; 
                                     $isOpen = isset($ev['is_attendance_open']) && $ev['is_attendance_open'] == 1;
                                     $passcode = $isOpen ? ($ev['passcode'] ?? '------') : '------';
+                                    $canOpenAttendance = isAttendanceDateAllowed($ev['thoi_gian_bat_dau'] ?? null);
                                 ?>
                                 <tr>
                                     <td class="fw-bold"><?php echo htmlspecialchars($evId); ?></td>
@@ -404,9 +417,13 @@ $classes = $stmt_classes->fetchAll();
                                                 <button type="submit" name="action" value="close" class="btn btn-danger btn-sm fw-bold px-3">
                                                     <i class="bi bi-lock-fill me-1"></i> Đóng
                                                 </button>
-                                            <?php else: ?>
+                                            <?php elseif ($canOpenAttendance): ?>
                                                 <button type="submit" name="action" value="open" class="btn btn-warning btn-sm text-dark fw-bold px-3">
                                                     <i class="bi bi-key-fill me-1"></i> Mở (5 phút)
+                                                </button>
+                                            <?php else: ?>
+                                                <button type="button" class="btn btn-secondary btn-sm fw-bold px-3" disabled title="Chỉ mở được cho sự kiện từ hôm qua trở đi">
+                                                    <i class="bi bi-lock-fill me-1"></i> Sự kiện đã quá hạn
                                                 </button>
                                             <?php endif; ?>
                                         </form>
