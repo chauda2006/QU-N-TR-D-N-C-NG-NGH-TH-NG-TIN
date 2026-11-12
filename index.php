@@ -130,7 +130,7 @@ try {
                             <span>🚀</span> Cập nhật sự kiện 24/7
                         </div>
                         <div class="feature-item">
-                            <span>📱</span> Điểm danh bằng mã QR thông minh
+                            <span>📱</span> Điểm danh bằng passcode thông minh
                         </div>
                         <div class="feature-item">
                             <span>⭐</span> Tích hợp điểm rèn luyện minh bạch

@@ -74,7 +74,7 @@ switch ($method) {
         }
         break;
 
-case 'POST':
+    case 'POST':
         $data = $_POST;
         
         // KIỂM TRA HÀNH ĐỘNG: Đây là SỬA hay THÊM MỚI?
@@ -169,7 +169,6 @@ case 'POST':
                     $update_fields[] = "mo_ta = ?";
                     $update_values[] = $data['mo_ta'] ?? '';
                 }
-                // Hỗ trợ thêm nếu có các cột này
                 if (in_array('doi_tuong_tham_gia', $columns)) {
                     $update_fields[] = "doi_tuong_tham_gia = ?";
                     $update_values[] = $data['doi_tuong'] ?? '';
@@ -191,7 +190,6 @@ case 'POST':
                 $stmt = $db->prepare($sql);
                 $stmt->execute($update_values);
 
-                // PHẢN HỒI THÔNG BÁO CHI TIẾT
                 $msg_success = "Cập nhật thông tin thành công!";
                 if ($loi_anh !== "") {
                     $msg_success .= "\n⚠️ NHƯNG LỖI ẢNH: " . $loi_anh;
@@ -215,8 +213,31 @@ case 'POST':
                 if (in_array('thoi_gian_bat_dau', $columns)) $insert_data['thoi_gian_bat_dau'] = str_replace('T', ' ', $data['thoi_gian_bat_dau'] ?? '');
                 if (in_array('thoi_gian_ket_thuc', $columns)) $insert_data['thoi_gian_ket_thuc'] = str_replace('T', ' ', $data['thoi_gian_ket_thuc'] ?? '');
                 if (in_array('mo_ta', $columns)) $insert_data['mo_ta'] = $data['mo_ta'] ?? null;
-                if (in_array('dia_diem', $columns)) $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
+                if (in_array('ma_diadiem', $columns)) {
+                    $ma_diadiem = null;
+                    $ten_diadiem = trim($data['dia_diem'] ?? '');
+                    if ($ten_diadiem !== '') {
+                        $stmt_location = $db->prepare("SELECT ma_diadiem FROM dia_diem WHERE ten_diadiem = ? LIMIT 1");
+                        $stmt_location->execute([$ten_diadiem]);
+                        $location = $stmt_location->fetch(PDO::FETCH_ASSOC);
+                        if ($location) {
+                            $ma_diadiem = $location['ma_diadiem'];
+                        } else {
+                            $stmt_location = $db->prepare("INSERT INTO dia_diem (ten_diadiem, vi_tri, suc_chua) VALUES (?, ?, ?)");
+                            $stmt_location->execute([
+                                $ten_diadiem,
+                                trim($data['vi_tri'] ?? ''),
+                                (int)($data['suc_chua'] ?? 0),
+                            ]);
+                            $ma_diadiem = $db->lastInsertId();
+                        }
+                    }
+                    $insert_data['ma_diadiem'] = $ma_diadiem;
+                } elseif (in_array('dia_diem', $columns)) {
+                    $insert_data['dia_diem'] = $data['dia_diem'] ?? null;
+                }
                 if (in_array('vi_tri', $columns)) $insert_data['vi_tri'] = $data['vi_tri'] ?? null;
+                if (in_array('suc_chua', $columns)) $insert_data['suc_chua'] = $data['suc_chua'] ?? null;
                 
                 if (in_array($col_img, $columns) && $anh_cap_nhat !== null) {
                     $insert_data[$col_img] = $anh_cap_nhat;
@@ -230,6 +251,21 @@ case 'POST':
                 $success = $stmt->execute(array_values($insert_data));
 
                 if ($success) {
+                    // Lấy tên sự kiện vừa tạo để đưa vào thông báo
+                    $ten_su_kien_vừa_tao = $insert_data[$col_title] ?? 'Sự kiện mới';
+
+                    // 🔔 TỰ ĐỘNG THÊM VÀO BẢNG THÔNG BÁO CHO HỆ THỐNG
+                    try {
+                        $tieu_de_tb = "Sự kiện mới: " . $ten_su_kien_vừa_tao;
+                        $noi_dung_tb = "Ban tổ chức vừa đăng một sự kiện mới. Hãy kiểm tra ngay!";
+                        $lien_ket_tb = "../su-kien.php";
+
+                        $stmt_tb = $db->prepare("INSERT INTO thong_bao (tieu_de, noi_dung, lien_ket) VALUES (?, ?, ?)");
+                        $stmt_tb->execute([$tieu_de_tb, $noi_dung_tb, $lien_ket_tb]);
+                    } catch (Exception $ex) {
+                        // Bỏ qua nếu bảng thong_bao chưa tồn tại để không làm gián đoạn việc tạo sự kiện
+                    }
+
                     $msg_success = "Thêm sự kiện thành công!";
                     if ($loi_anh !== "") $msg_success .= "\n⚠️ NHƯNG LỖI ẢNH: " . $loi_anh;
                     echo json_encode(["status" => "success", "message" => $msg_success]);
@@ -245,16 +281,10 @@ case 'POST':
         break;
 
     case 'PUT':
-        // 1. Lấy dữ liệu Text
-        // Ưu tiên đọc JSON (nếu sửa nhanh ngoài trang chủ)
         $data = json_decode(file_get_contents("php://input"), true);
-        
-        // Nếu không phải JSON, thử lấy từ $_POST (trong trường hợp JS fetch dùng POST nhưng giả lập PUT)
         if (!$data) {
              $data = $_POST;
         }
-
-        // Nếu vẫn trống, thử parse raw string (dành cho urlencoded)
         if (empty($data)) {
             parse_str(file_get_contents("php://input"), $put_vars);
             $data = $put_vars;
@@ -266,7 +296,6 @@ case 'POST':
             try {
                 $anh_cap_nhat = "";
 
-                // 2. KIỂM TRA & UPLOAD ẢNH (Chỉ chạy nếu $_FILES tồn tại)
                 if (isset($_FILES['anh_su_kien']) && $_FILES['anh_su_kien']['error'] === UPLOAD_ERR_OK) {
                     $target_dir = __DIR__ . DIRECTORY_SEPARATOR . "images" . DIRECTORY_SEPARATOR;
                     if (!is_dir($target_dir) && !mkdir($target_dir, 0777, true) && !is_dir($target_dir)) {
@@ -286,9 +315,7 @@ case 'POST':
                     }
                 }
 
-                // 3. THỰC THI CÂU LỆNH UPDATE
                 if (!empty($anh_cap_nhat)) {
-                    // CÓ ĐỔI ẢNH BÌA MỚI
                     $query = "UPDATE su_kien SET 
                                 ten_sukien = :ten_su_kien, 
                                 thoi_gian_bat_dau = :thoi_gian_bat_dau, 
@@ -308,7 +335,6 @@ case 'POST':
                         ':id'               => $id_val
                     ]);
                 } else {
-                    // KHÔNG ĐỔI ẢNH (Giữ nguyên ảnh cũ)
                     $query = "UPDATE su_kien SET 
                                 ten_sukien = :ten_su_kien, 
                                 thoi_gian_bat_dau = :thoi_gian_bat_dau, 

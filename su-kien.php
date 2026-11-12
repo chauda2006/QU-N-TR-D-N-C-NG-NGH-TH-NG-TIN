@@ -1,23 +1,6 @@
 <?php
 session_start();
-// Hiển thị nút Đăng sự kiện nếu là Quản lý sự kiện hoặc Admin
-if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')): 
 ?>
-<div style="text-align: right; margin: 20px 20px 0 0;">
-    <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
-        <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
-    </a>
-    <!-- Nút Xóa sự kiện -->
-    <a href="user/delete.php" class="btn-space-danger">
-        <i class="bi bi-gear-fill"></i> Xóa
-    </a>
-    <!-- Nút Sửa sự kiện -->
-    <a href="user/xuly_sua.php" class="btn-space-warning">
-        <i class="bi bi-gear-fill"></i> Sửa
-    </a>
-</div>
-<?php endif; ?>
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -31,8 +14,7 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <link rel="stylesheet" type="text/css" href="./css/model-su-kien.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" type="text/css" href="./css/su-kien.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" type="text/css" href="./css/THANH-LOC.css?v=<?php echo time(); ?>">
-    <link rel="stylesheet" type="text/css" href="./css/button-event.css?php echo time(); ?>">
-    
+    <link rel="stylesheet" type="text/css" href="./css/button-event.css?v=<?php echo time(); ?>">
 </head>
 <body>
 
@@ -46,6 +28,27 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <div class="video-overlay"></div>
 
     <?php include_once 'header.php'; ?>
+
+    <!-- Hiển thị cụm nút quản lý sự kiện và Thống kê nếu là Quản lý sự kiện hoặc Admin -->
+    <?php if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')): ?>
+    <div style="text-align: right; margin: 20px 20px 0 0; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+        <a href="user/quan_ly_su_kien.php" class="btn-space-manager">
+            <i class="bi bi-plus-circle-fill"></i> Đăng & Bổ Sung Sự Kiện Mới
+        </a>
+        <!-- Nút Xóa sự kiện -->
+        <a href="user/delete.php" class="btn-space-danger">
+            <i class="bi bi-gear-fill"></i> Xóa
+        </a>
+        <!-- Nút Sửa sự kiện -->
+        <a href="user/xuly_sua.php" class="btn-space-warning">
+            <i class="bi bi-gear-fill"></i> Sửa
+        </a>
+        <!-- Nút Thống kê chuẩn 3D Neon -->
+        <a href="user/thong_ke_dang_ky.php" class="btn-space-stats">
+            <i class="bi bi-bar-chart-fill"></i> Thống kê người đăng ký
+        </a>
+    </div>
+    <?php endif; ?>
 
     <main class="container-fluid event-container">
         <h1 class="text-center text-uppercase event-heading">
@@ -180,13 +183,25 @@ if (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' |
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        
         const canManageEvents = <?php echo (isset($_SESSION['vai_tro']) && ($_SESSION['vai_tro'] === 'quan_ly_su_kien' || $_SESSION['vai_tro'] === 'admin')) ? 'true' : 'false'; ?>;
     </script>
-
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const detailModal = document.getElementById('eventDetailModal');
+        if (detailModal) {
+            detailModal.addEventListener('shown.bs.modal', function () {
+                const eventId = document.getElementById('detailId').innerText.trim();
+                const btnRegister = document.getElementById('btnRegisterModal');
+                
+                if (eventId && btnRegister) {
+                    btnRegister.href = 'dang-ky.php?su_kien_id=' + encodeURIComponent(eventId);
+                }
+            });
+        }
+    });
+    </script>
 
     <!-- Gọi file JS chính của bạn -->
-    
     <script src="js/su-kien.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

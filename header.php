@@ -39,15 +39,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 $isAdmin = (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) || 
                            (isset($_SESSION['user']) && is_array($_SESSION['user']) && isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin');
                 $isLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['username']);
+                
+                // Lấy tên người dùng từ session
+                $ten_nguoi_dung = $_SESSION['username'] ?? $_SESSION['ho_ten'] ?? 'Tài khoản';
+                // Lấy chữ cái đầu tiên của tên (xử lý Unicode tiếng Việt chuẩn)
+                $chu_cai_dau = mb_strtoupper(mb_substr(trim($ten_nguoi_dung), 0, 1, 'UTF-8'), 'UTF-8');
                 ?>
 
-                <!-- 1. Nút Đăng nhập / Tài khoản -->
+                <!-- 1. Nút Đăng nhập / Tài khoản (Tích hợp Avatar Chữ cái & Tên cùng một hàng ngang) -->
                 <?php if ($isLoggedIn): ?>
-                    <a href="user/dashboard.php" class="btn-custom-3d btn-user-login">
-                        👤 <?= htmlspecialchars($_SESSION['username'] ?? 'Tài khoản') ?>
+                    <a href="user/dashboard.php" class="btn-custom-3d btn-user-login btn-user-account-custom">
+                        <div class="user-avatar-circle">
+                            <span><?php echo $chu_cai_dau; ?></span>
+                        </div>
+                        <span class="user-name-text"><?php echo htmlspecialchars($ten_nguoi_dung); ?></span>
                     </a>
                 <?php else: ?>
-                    <a href="user/login.php" class="btn-custom-3d btn-user-login">Đăng nhập</a>
+                    <a href="user/login.php" class="btn-custom-3d btn-user-login">👤 Đăng nhập</a>
                 <?php endif; ?>
 
                 <!-- 2. Nút Admin -->
@@ -67,15 +75,16 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 </header>
 
-<!-- CSS B BỐ CỤC XẾP DỌC HOÀN TOÀN CẢ 3 NÚT -->
+<!-- CSS CHUẨN XÁC 100%: KHẮC PHỤC TRIỆT ĐỂ LỖI RỚT DÒNG AVATAR & TÊN -->
 <style>
+    
 /* Ép toàn bộ khối chứa nút xếp thành 1 cột dọc */
 .header-actions-vertical {
   display: flex !important;
   flex-direction: column !important;
-  align-items: stretch !important; /* Các nút có độ rộng đồng đều */
+  align-items: stretch !important;
   gap: 8px !important;
-  min-width: 140px; /* Đảm bảo độ rộng hợp lý cho cột nút */
+  min-width: 170px !important;
 }
 
 /* Kiểu dáng 3D chung cho các nút */
@@ -100,6 +109,55 @@ $current_page = basename($_SERVER['PHP_SELF']);
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   text-align: center;
+}
+
+/* Tùy chỉnh riêng nút tài khoản: Ép nằm ngang hàng tuyệt đối */
+.btn-user-account-custom {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 6px 14px 6px 8px !important;
+  min-width: 170px !important;
+  text-transform: none !important;
+}
+
+/* Vòng tròn Avatar chứa chữ cái đầu tiên */
+.user-avatar-circle {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  background: radial-gradient(circle, #05ffe1 0%, #0284c7 100%) !important;
+  border: 1.5px solid #ffffff !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 0 10px rgba(5, 255, 225, 0.8) !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
+
+.user-avatar-circle span {
+  color: #030008 !important;
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+}
+
+/* Tên người dùng hiển thị gọn gàng bên cạnh avatar */
+.user-name-text {
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 120px !important;
+  text-align: left !important;
+  line-height: 1.2 !important;
 }
 
 /* Nút Đăng nhập / Tài khoản / Admin (Màu Đỏ - Xanh lục 3D) */

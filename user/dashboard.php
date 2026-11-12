@@ -23,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if (!empty($chuc_vu_mong_muon) && !empty($ten_clb) && !empty($ly_do_nang_cap)) {
         try {
-            $stmt_update = $conn->prepare("UPDATE users SET yeu_cau_phan_quyen = 'pending', chuc_vu_mong_muon = ?, ten_clb = ?, ly_do_nang_cap = ? WHERE ma_sv = ?");
+            // Khi gửi lại yêu cầu, đồng thời đưa vai trò về lại sinh_vien và yêu cầu là pending
+            $stmt_update = $conn->prepare("UPDATE users SET vai_tro = 'sinh_vien', yeu_cau_phan_quyen = 'pending', chuc_vu_mong_muon = ?, ten_clb = ?, ly_do_nang_cap = ? WHERE ma_sv = ?");
             $stmt_update->execute([$chuc_vu_mong_muon, $ten_clb, $ly_do_nang_cap, $ma_sv]);
             $message = "Gửi yêu cầu thành công! Vui lòng chờ Admin phê duyệt.";
         } catch (PDOException $e) {
@@ -45,11 +46,27 @@ $chuc_vu_cu = $user['chuc_vu_mong_muon'] ?? '';
 $ten_clb_cu = $user['ten_clb'] ?? '';
 $ly_do_cu = $user['ly_do_nang_cap'] ?? '';
 
-$has_notification = ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
+// 🔔 TRUY VẤN DANH SÁCH THÔNG BÁO TỪ BẢNG thong_bao
+$list_thong_bao = [];
+$latest_notif_id = 0;
+try {
+    $stmt_tb_list = $conn->query("SELECT * FROM thong_bao ORDER BY ngay_tao DESC LIMIT 5");
+    if ($stmt_tb_list) {
+        $list_thong_bao = $stmt_tb_list->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($list_thong_bao)) {
+            $latest_notif_id = $list_thong_bao[0]['id']; // Lấy ID của thông báo mới nhất
+        }
+    }
+} catch (Exception $e) {
+    // Bỏ qua lỗi nếu bảng thong_bao chưa được tạo
+}
+
+// Kiểm tra có thông báo sự kiện hoặc trạng thái duyệt quyền hay không
+$has_notification = (count($list_thong_bao) > 0) || ($yeu_cau === 'approved' || $yeu_cau === 'rejected');
 
 // Kiểm tra sự kiện đang mở điểm danh 
 $active_event = null;
-if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
+if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro) || $vai_tro === 'rejected')) {
     $stmt_active = $conn->prepare("
         SELECT sk.* FROM su_kien sk
         LEFT JOIN dang_ky_su_kien dk ON sk.ma_sukien = dk.su_kien_id AND dk.user_id = ?
@@ -74,10 +91,131 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
     <link rel="stylesheet" type="text/css" href="../css/user-dashboard.css?v=<?php echo time(); ?>">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+<style>
+        /* =================================================================
+           🌟 KHU VỰC THÔNG BÁO & DROPDOWN 3D NEON SIÊU CẤP
+           ================================================================ */
+        .header, .header-nav, .container {
+            overflow: visible !important;
+            position: relative;
+            z-index: 999 !important;
+        }
+        
+        /* Ép nút thông báo có định vị chuẩn để làm mốc chính xác cho badge */
+        .notification-bell {
+            position: relative !important;
+            overflow: visible !important;
+            border-radius: 16px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 🔴 HUY HIỆU (BADGE) NẰM ĐỐT GỌN GÀNG, CÂN ĐỐI NGAY GÓC NÚT */
+        .pulse-badge {
+            position: absolute !important;
+            top: -6px !important;
+            right: -2px !important; /* Cân đối hoàn hảo, đè gọn gàng lên góc viền nút */
+            transform: none !important;
+            padding: 0.25em 0.55em !important;
+            font-size: 0.7rem !important;
+            font-weight: 900 !important;
+            letter-spacing: -0.5px;
+            border-radius: 50rem !important;
+            background: linear-gradient(135deg, #ff2a6d 0%, #d60036 100%) !important;
+            color: #ffffff !important;
+            animation: pulseGlow 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            box-shadow: 0 0 12px rgba(255, 42, 109, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.5);
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                transform: scale(0.92);
+                box-shadow: 0 0 0 0 rgba(255, 42, 109, 0.9), inset 0 0 4px rgba(255, 255, 255, 0.5);
+            }
+            70% {
+                transform: scale(1.15);
+                box-shadow: 0 0 0 8px rgba(255, 42, 109, 0), inset 0 0 6px rgba(255, 255, 255, 0.8);
+            }
+            100% {
+                transform: scale(0.92);
+                box-shadow: 0 0 0 0 rgba(255, 42, 109, 0), inset 0 0 4px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* 🌌 KHUNG DROPDOWN THÔNG BÁO 3D GLASSMORPHISM */
+        .dropdown-menu-custom {
+            background: var(--card-bg) !important;
+            backdrop-filter: blur(24px) !important;
+            -webkit-backdrop-filter: blur(24px) !important;
+            border: 2px solid var(--card-border) !important;
+            border-radius: 20px !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px var(--neon-green-glow), inset 0 0 15px rgba(5, 255, 225, 0.1) !important;
+            color: var(--text-main) !important;
+            z-index: 99999 !important;
+            position: absolute !important;
+            top: 48px !important;
+            right: 0 !important;
+            margin-top: 0 !important;
+            padding: 16px !important;
+            animation: dropMenuNeon 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+
+        @keyframes dropMenuNeon {
+            0% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Tiêu đề thông báo bên trong */
+        .dropdown-menu-custom .dropdown-header {
+            color: var(--neon-green) !important;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 900;
+            text-shadow: 0 0 12px var(--neon-green-glow);
+            border-bottom: 2px solid var(--card-border) !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 10px !important;
+            text-align: center;
+        }
+
+        /* Các mục thông báo chi tiết */
+        .dropdown-menu-custom .dropdown-item {
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            padding: 12px 14px !important;
+            color: var(--text-main) !important;
+            background: transparent !important;
+            margin-bottom: 6px;
+        }
+
+        .dropdown-menu-custom .dropdown-item:hover {
+            background: var(--neon-green-subtle) !important;
+            border-color: var(--card-border);
+            box-shadow: 0 0 20px var(--neon-green-glow);
+            transform: translateY(-3px) scale(1.01);
+        }
+
+        /* 🕒 HIỂN THỊ THỜI GIAN SÁNG RÕ CHO CẢ 2 CHẾ ĐỘ SÁNG / TỐI */
+        .notif-time {
+            font-size: 11px;
+            font-weight: 800;
+            color: #ffeb3b !important;
+            text-shadow: 0 0 8px rgba(255, 235, 59, 0.7);
+        }
+        
+        [data-theme="light"] .notif-time {
+            color: #047857 !important;
+            text-shadow: none;
+        }
+    </style>
 </head>
 <body>
 
-    <!-- 🌌 HIỆU ỨNG LOADING CỔNG THIÊN HÀ 3D (CHẠY CHẬM 2 GIÂY ĐẦY ĐỦ SAO BĂNG) -->
+    <!-- 🌌 HIỆU ỨNG LOADING CỔNG THIÊN HÀ 3D -->
     <div id="page-loader">
       <div class="shooting-star"></div>
       <div class="shooting-star"></div>
@@ -98,19 +236,63 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                 <span class="welcome-text">Chào mừng,</span> 
                 <span class="student-name"><?php echo htmlspecialchars($user['ho_ten'] ?? ''); ?></span>
             </h2>
-            <div class="header-nav">
+            <div class="header-nav d-flex align-items-center">
                 <!-- Nút chuyển đổi Sáng/Tối 3D Neon -->
-                <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng/Tối">
+                <button class="theme-toggle-btn me-2" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng/Tối">
                   <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
                 </button>
-                <a href="banners.php" class="btn btn-primary">Quản lý Banner</a>
+                <a href="banners.php" class="btn btn-primary me-2">Quản lý Banner</a>
 
-                <a href="#role-section" class="notification-bell btn btn-outline-secondary btn-sm position-relative me-2" title="Thông báo hệ thống">
-                    🔔 Thông báo
-                    <?php if ($has_notification): ?>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">1</span>
-                    <?php endif; ?>
-                </a>
+                <!-- 🔔 DROPDOWN THÔNG BÁO CHUẨN BOOTSTRAP VÀ CÂN ĐỐI BADGE -->
+                <div class="dropdown me-2" style="z-index: 99999;">
+                    <a href="#" class="notification-bell btn btn-outline-secondary btn-sm" id="notificationBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Thông báo hệ thống">
+                        🔔 Thông báo
+                        <?php if ($has_notification): ?>
+                            <!-- Chấm đỏ số lượng nằm đè cân đối góc nút -->
+                            <span id="notifBadge" class="badge rounded-pill bg-danger pulse-badge">
+                                <?php echo count($list_thong_bao) > 0 ? count($list_thong_bao) : 1; ?>
+                            </span>
+                        <?php endif; ?>
+                    </a>
+
+                    <!-- Danh sách thông báo thả xuống -->
+                    <ul class="dropdown-menu dropdown-menu-end shadow dropdown-menu-custom" style="width: 340px; max-height: 420px; overflow-y: auto;">
+                        <li class="dropdown-header fw-bold text-center">✨ Thông báo sự kiện mới ✨</li>
+                        
+                        <?php if (empty($list_thong_bao) && $yeu_cau !== 'approved' && $yeu_cau !== 'rejected'): ?>
+                            <li><span class="dropdown-item text-muted text-center small py-3">Không có thông báo nào.</span></li>
+                        <?php else: ?>
+                            <?php if ($yeu_cau === 'approved'): ?>
+                                <li class="mb-2">
+                                    <span class="dropdown-item text-wrap">
+                                        <div class="fw-bold text-success" style="font-size: 13px;">🎉 Phê duyệt tài khoản</div>
+                                        <div class="small mt-1" style="font-size: 12px; opacity: 0.9;">Yêu cầu nâng quyền Quản lý sự kiện đã được duyệt!</div>
+                                    </span>
+                                </li>
+                            <?php elseif ($yeu_cau === 'rejected'): ?>
+                                <li class="mb-2">
+                                    <span class="dropdown-item text-wrap">
+                                        <div class="fw-bold text-danger" style="font-size: 13px;">❌ Phê duyệt tài khoản</div>
+                                        <div class="small mt-1" style="font-size: 12px; opacity: 0.9;">Yêu cầu nâng quyền của bạn đã bị từ chối.</div>
+                                    </span>
+                                </li>
+                            <?php endif; ?>
+
+                            <?php foreach ($list_thong_bao as $tb): ?>
+                                <li class="mb-2">
+                                    <a class="dropdown-item text-wrap" href="<?php echo htmlspecialchars($tb['lien_ket'] ?? '#'); ?>">
+                                        <div class="fw-bold" style="color: var(--neon-green); font-size: 13px; text-shadow: 0 0 5px var(--neon-green-glow);"><?php echo htmlspecialchars($tb['tieu_de']); ?></div>
+                                        <div class="small mt-1" style="font-size: 12px; line-height: 1.4; opacity: 0.95;"><?php echo htmlspecialchars($tb['noi_dung']); ?></div>
+                                        <div class="notif-time mt-2 text-end">
+                                            <i class="bi bi-clock me-1"></i><?php echo date('d/m/Y H:i', strtotime($tb['ngay_tao'])); ?>
+                                        </div>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+
                 <a href="../index.php" class="btn btn-outline-light btn-sm me-2">Trang chủ</a>
                 <a href="/QUAN-LY-SU-KIEN-SINH-VIEN/user/logout.php" class="btn btn-danger btn-sm">Đăng xuất</a>
             </div>
@@ -136,13 +318,12 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                 <p><strong>Email:</strong> <?php echo htmlspecialchars($user['email'] ?? 'Chưa cập nhật'); ?></p>
                 <p><strong>Trạng thái:</strong> <?php echo htmlspecialchars($user['trang_thai'] ?? 'Đang học / Đang công tác'); ?></p>
                 <p><strong>Điểm rèn luyện:</strong> 
-                    <span class="text-success fw-bold fs-5"><?php echo htmlspecialchars($user['diem_ren_luyen'] ?? 0); ?> điểm</span>
                     <a href="diem-ren-luyen.php" class="btn btn-sm btn-outline-success ms-2 py-0">Xem chi tiết</a>
                 </p>
             </div>
         </div>
 
-        <!-- 🔑 KHU VỰC YÊU CẦU NÂNG CẤP QUYỀN (THU GỌN MẶC ĐỊNH KHI VÀO TRANG) -->
+        <!-- 🔑 KHU VỰC YÊU CẦU NÂNG CẤP QUYỀN -->
         <div id="role-section" class="role-section card p-4 shadow-sm">
             <div class="card-header-toggle collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#roleSectionContent" aria-expanded="false" aria-controls="roleSectionContent" style="cursor: pointer;">
                 <h3>🔒 Đăng ký & Trạng thái Quản lý sự kiện</h3>
@@ -157,7 +338,7 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                     </div>
                 <?php elseif ($yeu_cau === 'rejected'): ?>
                     <div class="alert alert-danger mt-2">
-                        <p class="fw-bold mb-0">❌ Rất tiếc! Yêu cầu nâng cấp quyền của bạn đã bị từ chối.</p>
+                        <p class="fw-bold mb-0">❌ Rất tiếc! Yêu cầu nâng cấp quyền của bạn đã bị từ chối. Bạn có thể cập nhật lại thông tin và gửi lại yêu cầu bên dưới.</p>
                     </div>
                 <?php endif; ?>
 
@@ -169,7 +350,14 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                 ?>
                 </strong></p>
 
-                <?php if ($vai_tro === 'sinh_vien'): ?>
+                <?php if ($vai_tro === 'quan_ly_su_kien' && $yeu_cau === 'approved'): ?>
+                    <p class="text-success fw-bold mb-2 mt-3">
+                        ✔ Tài khoản của bạn đã có quyền quản lý sự kiện!
+                    </p>
+                    <a href="quan_ly_su_kien.php" class="btn btn-success btn-manager">
+                        👉 Đi tới Trang đăng & quản lý sự kiện
+                    </a>
+                <?php else: ?>
                     <?php if ($yeu_cau === 'pending'): ?>
                         <div class="p-3 rounded border border-warning bg-warning bg-opacity-10 mt-2">
                             <p class="mb-1 text-warning fw-bold">⏳ Yêu cầu của bạn đang chờ Admin duyệt.</p>
@@ -198,7 +386,7 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                                     <option value="Tin học">Tin học</option>
                                     <option value="Tiếng Anh">Tiếng Anh</option>
                                     <option value="Bạn đọc">Bạn đọc</option>
-                                    <option value="Thế thao">Thể thao</option>
+                                    <option value="Thể thao">Thể thao</option>
                                     <option value="Kỹ năng sống">Kỹ năng sống</option>
                                     <option value="Thiện nguyện">Thiện nguyện</option>
                                 </select>
@@ -210,17 +398,10 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-request">
-                                🚀 Gửi yêu cầu xét duyệt
+                                🚀 Gửi yêu cầu xét duyệt lại
                             </button>
                         </form>
                     <?php endif; ?>
-                <?php else: ?>
-                    <p class="text-success fw-bold mb-2 mt-3">
-                        ✔ Tài khoản của bạn đã có quyền quản lý sự kiện!
-                    </p>
-                    <a href="quan_ly_su_kien.php" class="btn btn-success btn-manager">
-                        👉 Đi tới Trang đăng & quản lý sự kiện
-                    </a>
                 <?php endif; ?>
             </div>
         </div>
@@ -258,9 +439,33 @@ if (!empty($user_id) && ($vai_tro === 'sinh_vien' || empty($vai_tro))) {
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- XỬ LÝ JAVASCRIPT: LOADING, COLLAPSE ARROW & LOANG MÀU SÁNG/TỐI -->
+    <!-- XỬ LÝ JAVASCRIPT: QUẢN LÝ TRẠNG THÁI HIỂN THỊ CHẤM ĐỎ THÔNG BÁO THÔNG MINH -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            const notifBtn = document.getElementById('notificationBtn');
+            const notifBadge = document.getElementById('notifBadge');
+            const userMaSv = "<?php echo htmlspecialchars($ma_sv); ?>";
+            const storageKey = 'last_viewed_notif_' + userMaSv;
+            const currentLatestId = "<?php echo $latest_notif_id; ?>";
+
+            // Kiểm tra thông minh: Nếu ID thông báo mới nhất TRÙNG với ID đã xem trước đó -> Ẩn chấm đỏ
+            if (notifBadge && currentLatestId) {
+                const lastViewedId = localStorage.getItem(storageKey);
+                if (lastViewedId === currentLatestId) {
+                    notifBadge.style.display = 'none';
+                }
+            }
+
+            // Khi người dùng bấm vào nút thông báo để xem
+            if (notifBtn) {
+                notifBtn.addEventListener('click', function () {
+                    if (notifBadge && currentLatestId) {
+                        notifBadge.style.display = 'none'; // Ẩn chấm đỏ ngay lập tức
+                        localStorage.setItem(storageKey, currentLatestId); // Lưu lại ID mới nhất đã xem
+                    }
+                });
+            }
+
             <?php if ($active_event): ?>
             var myModal = new bootstrap.Modal(document.getElementById('autoAttendanceModal'));
             myModal.show();

@@ -45,18 +45,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array
     }
 }
 
-// 1. Xử lý khi Admin bấm Duyệt hoặc Từ chối yêu cầu phân quyền của sinh viên
+// 1. Xử lý khi Admin bấm Duyệt hoặc Từ chối yêu cầu phân quyền của sinh viên (Kèm tự động thêm bảng thong_bao)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_admin'])) {
     $target_user_id = $_POST['target_user_id'] ?? '';
     $admin_action   = $_POST['action_admin'];
 
     if ($target_user_id) {
-        if ($admin_action === 'approve') {
-            $stmt_approve = $conn->prepare("UPDATE users SET vai_tro = 'quan_ly_su_kien', yeu_cau_phan_quyen = 'approved' WHERE id = ?");
-            $stmt_approve->execute([$target_user_id]);
-        } elseif ($admin_action === 'reject') {
-            $stmt_reject = $conn->prepare("UPDATE users SET vai_tro = 'rejected', yeu_cau_phan_quyen = 'rejected' WHERE id = ?");
-            $stmt_reject->execute([$target_user_id]);
+        // Lấy thông tin user được duyệt để ghi nhận thông báo chính xác
+        $stmt_get_user = $conn->prepare("SELECT id, ma_sv, ho_ten FROM users WHERE id = ?");
+        $stmt_get_user->execute([$target_user_id]);
+        $target_user = $stmt_get_user->fetch(PDO::FETCH_ASSOC);
+
+        if ($target_user) {
+            if ($admin_action === 'approve') {
+                $stmt_approve = $conn->prepare("UPDATE users SET vai_tro = 'quan_ly_su_kien', yeu_cau_phan_quyen = 'approved' WHERE id = ?");
+                $stmt_approve->execute([$target_user_id]);
+
+                // 🔔 TỰ ĐỘNG THÊM VÀO BẢNG thong_bao ĐỂ USER HIỆN CHẤM ĐỎ BÊN DASHBOARD
+                try {
+                    $tieu_de = "Phê duyệt tài khoản";
+                    $noi_dung = "Yêu cầu nâng quyền Quản lý sự kiện của bạn đã được Admin phê duyệt!";
+                    $lien_ket = "dashboard.php";
+                    $stmt_tb = $conn->prepare("INSERT INTO thong_bao (tieu_de, noi_dung, lien_ket, ngay_tao) VALUES (?, ?, ?, NOW())");
+                    $stmt_tb->execute([$tieu_de, $noi_dung, $lien_ket]);
+                } catch (Exception $e) {
+                    // Bỏ qua lỗi phụ nếu bảng chưa đồng bộ
+                }
+
+            } elseif ($admin_action === 'reject') {
+                $stmt_reject = $conn->prepare("UPDATE users SET vai_tro = 'rejected', yeu_cau_phan_quyen = 'rejected' WHERE id = ?");
+                $stmt_reject->execute([$target_user_id]);
+
+                // 🔔 TỰ ĐỘNG THÊM VÀO BẢNG thong_bao ĐỂ USER HIỆN CHẤM ĐỎ BÊN DASHBOARD
+                try {
+                    $tieu_de = "Phê duyệt tài khoản";
+                    $noi_dung = "Rất tiếc! Yêu cầu nâng quyền của bạn đã bị từ chối.";
+                    $lien_ket = "dashboard.php";
+                    $stmt_tb = $conn->prepare("INSERT INTO thong_bao (tieu_de, noi_dung, lien_ket, ngay_tao) VALUES (?, ?, ?, NOW())");
+                    $stmt_tb->execute([$tieu_de, $noi_dung, $lien_ket]);
+                } catch (Exception $e) {
+                    // Bỏ qua lỗi phụ
+                }
+            }
         }
     }
 }
