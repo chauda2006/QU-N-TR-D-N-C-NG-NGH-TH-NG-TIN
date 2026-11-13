@@ -311,7 +311,7 @@ Khuyến nghị sao lưu sau mỗi sự kiện và trước khi cập nhật mã
 - Ca kiểm thử: `Nhom6_TestCase_SEM.xlsx`
 - Lịch dự án: `Nhom06_COMP1305_Lich.mpp`
 - Liên kết kho mã nguồn GitHub:(https://github.com/chauda2006/QU-N-TR-D-N-C-NG-NGH-TH-NG-TIN.git)
-- Liên kết video demo 10 phút: https://www.figma.com/design/MyCUq7sPKBmDRXKuTXwLJX/Untitled?node-id=0-1&p=f
+- Liên kết video demo: https://www.figma.com/design/MyCUq7sPKBmDRXKuTXwLJX/Untitled?node-id=0-1&p=f
 
 ---
 
